@@ -514,7 +514,7 @@ const showNotification = (type, message, ticketId) => {
 ```javascript
 // Security check on component mount
 useEffect(() => {
-  if (!agent || (agent.role !== 'support_executive' && agent.role !== 'admin')) {
+  if (!agent || (agent.role !== 'support_agent' && agent.role !== 'admin')) {
     console.log('❌ Access denied - User is not an agent');
     navigate('/login', { replace: true });
     return;

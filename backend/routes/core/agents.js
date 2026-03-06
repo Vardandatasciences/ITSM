@@ -15,7 +15,7 @@ router.use(setTenantContext);
 const validateAgentRegistration = [
   body('name').trim().isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters'),
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
-  body('role').optional().isIn(['support_executive', 'support_manager', 'ceo']).withMessage('Invalid role. Must be: support_executive, support_manager, or ceo'),
+  body('role').optional().isIn(['support_agent', 'support_manager', 'ceo']).withMessage('Invalid role. Must be: support_agent, support_manager, or ceo'),
   body('department').optional(),
   body('manager_id').optional()
 ];
@@ -81,7 +81,7 @@ router.post('/register', validateAgentRegistration, async (req, res) => {
       });
     }
 
-    const { name, email, role = 'support_executive', department = null, manager_id = null } = req.body;
+    const { name, email, role = 'support_agent', department = null, manager_id = null } = req.body;
     console.log('📝 Parsed data:', { name, email, role, department, manager_id });
 
     // Convert manager_id to integer or null

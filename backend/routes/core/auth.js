@@ -364,7 +364,7 @@ router.post('/global-login', [
     let role = user.role;
     
     // For agents table, roles are already in the correct format
-    // No mapping needed since agents table has: support_executive, support_manager, ceo, admin
+    // No mapping needed since agents table has: support_agent, support_manager, ceo, admin
     if (userType === 'agent') {
       // Roles from agents table are already correct
       role = user.role;
@@ -373,12 +373,12 @@ router.post('/global-login', [
       if (user.role === 'manager') {
         role = 'support_manager';
       } else if (user.role === 'user') {
-        role = 'support_executive';
+        role = 'support_agent';
       }
       // ceo role stays the same
     }
     
-    if (['support_executive', 'support_manager', 'ceo', 'admin'].includes(role)) {
+    if (['support_agent', 'support_manager', 'ceo', 'admin'].includes(role)) {
       dashboardType = 'staff';
     }
 

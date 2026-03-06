@@ -13,7 +13,7 @@ router.use(setTenantContext);
 router.get('/messages/:ticketId', authenticateToken, verifyTenantAccess, async (req, res) => {
   try {
     const { ticketId } = req.params;
-    const tenantId = req.tenantId;
+    let tenantId = req.tenantId;
     
     // Validate ticketId
     if (!ticketId || isNaN(ticketId)) {
@@ -24,10 +24,28 @@ router.get('/messages/:ticketId', authenticateToken, verifyTenantAccess, async (
     }
 
     // First check if ticket exists (tenant-filtered)
-    const [tickets] = await pool.execute(
-      'SELECT id, name, issue_title FROM tickets WHERE id = ? AND tenant_id = ?',
+    let [tickets] = await pool.execute(
+      'SELECT id, name, issue_title, tenant_id, user_id, email FROM tickets WHERE id = ? AND tenant_id = ?',
       [ticketId, tenantId]
     );
+
+    // Fallback for customers: ticket may have different tenant_id (e.g. tenant 1 vs 2)
+    if (tickets.length === 0 && req.user && (req.user.role === 'user' || req.user.role === 'customer')) {
+      [tickets] = await pool.execute(
+        'SELECT id, name, issue_title, tenant_id, user_id, email FROM tickets WHERE id = ?',
+        [ticketId]
+      );
+      if (tickets.length > 0) {
+        const ticket = tickets[0];
+        const isOwner = (ticket.user_id && parseInt(ticket.user_id) === parseInt(req.user.id)) ||
+          (ticket.email && ticket.email.toLowerCase() === (req.user.email || '').toLowerCase());
+        if (isOwner) {
+          tenantId = ticket.tenant_id || tenantId || 1;
+        } else {
+          return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+      }
+    }
 
     if (tickets.length === 0) {
       return res.status(404).json({
@@ -36,26 +54,39 @@ router.get('/messages/:ticketId', authenticateToken, verifyTenantAccess, async (
       });
     }
 
-    const [messages] = await pool.execute(`
-      SELECT 
-        cm.id,
-        cm.ticket_id,
-        cm.sender_type,
-        cm.sender_id,
-        cm.sender_name,
-        cm.message,
-        cm.message_type,
-        cm.is_read,
-        cm.read_at,
-        cm.is_edited,
-        cm.edited_at,
-        cm.parent_message_id,
-        cm.created_at,
-        cm.updated_at
-      FROM chat_messages cm
-      WHERE cm.ticket_id = ? AND cm.tenant_id = ?
-      ORDER BY cm.created_at ASC
-    `, [ticketId, tenantId]);
+    let messages = [];
+    try {
+      const [chatRows] = await pool.execute(`
+        SELECT id, ticket_id, sender_type, sender_id, sender_name, message, message_type,
+               is_read, read_at, is_edited, edited_at, parent_message_id, created_at, updated_at
+        FROM chat_messages
+        WHERE ticket_id = ? AND tenant_id = ?
+        ORDER BY created_at ASC
+      `, [ticketId, tenantId]);
+      messages = chatRows;
+    } catch (cmErr) {
+      if (cmErr.code !== 'ER_BAD_FIELD_ERROR') throw cmErr;
+    }
+
+    // Fallback: use replies table for legacy tickets (no chat_messages)
+    if (messages.length === 0) {
+      try {
+        const [replyRows] = await pool.execute(
+          'SELECT id, ticket_id, message, sent_at, is_customer_reply, customer_name, agent_name FROM replies WHERE ticket_id = ? ORDER BY sent_at ASC',
+          [ticketId]
+        );
+        messages = replyRows.map(r => ({
+          id: r.id,
+          ticket_id: r.ticket_id,
+          sender_type: r.is_customer_reply ? 'customer' : 'agent',
+          sender_name: r.is_customer_reply ? (r.customer_name || 'Customer') : (r.agent_name || 'Agent'),
+          message: r.message,
+          created_at: r.sent_at
+        }));
+      } catch (e) {
+        console.warn('Fallback replies fetch failed:', e.message);
+      }
+    }
     
     res.json({
       success: true,
@@ -510,7 +541,7 @@ router.put('/typing', authenticateToken, verifyTenantAccess, async (req, res) =>
 
     // Check if session exists (tenant-filtered)
     const [sessions] = await pool.execute(
-      'SELECT session_id FROM chat_sessions WHERE session_id = ? AND tenant_id = ? AND status = "active"',
+      'SELECT session_id FROM chat_sessions WHERE session_id = ? AND tenant_id = ? AND status = \'active\'',
       [sessionId, tenantId]
     );
 

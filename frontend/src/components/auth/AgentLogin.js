@@ -57,10 +57,10 @@ const AgentLogin = ({ onLogin }) => {
         console.log('✅ Login successful, storing agent data');
         
         // Convert agent data to user format for consistency with GlobalLogin
-        // Map agent role to support_executive for proper routing
+        // Map agent role to support_agent for proper routing
         let agentRole = data.data.agent.role;
         if (agentRole === 'agent' || !agentRole) {
-          agentRole = 'support_executive';
+          agentRole = 'support_agent';
         }
         
         const userData = {

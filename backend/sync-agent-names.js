@@ -10,7 +10,7 @@ async function syncAgentNames() {
       UPDATE users u
       JOIN agents a ON CONVERT(a.email USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(u.email USING utf8mb4) COLLATE utf8mb4_unicode_ci
       SET u.name = a.name
-      WHERE u.role IN ('agent','support_executive')
+      WHERE u.role IN ('agent','support_agent')
     `);
 
     console.log(`✅ Updated names for ${result.affectedRows} user(s).`);

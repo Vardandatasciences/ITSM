@@ -62,7 +62,7 @@ async function testActualLogin() {
       id: agent.id,
       name: agent.name,
       email: agent.email,
-      role: agent.role || 'support_executive',
+      role: agent.role || 'support_agent',
       department: agent.department,
       manager_id: agent.manager_id,
       is_active: agent.is_active,

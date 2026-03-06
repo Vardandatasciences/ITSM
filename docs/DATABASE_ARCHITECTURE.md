@@ -75,7 +75,7 @@ users:
 
 -- STAFF (agents table)  
 agents:
-├── role: 'support_executive' | 'support_manager' | 'ceo'
+├── role: 'support_agent' | 'support_manager' | 'ceo'
 ├── Full system access
 └── Staff-specific fields
 ```
@@ -124,7 +124,7 @@ agents (Staff)
 ├── name
 ├── password_hash
 ├── login_id (UNIQUE)
-├── role: 'support_executive' | 'support_manager' | 'ceo'
+├── role: 'support_agent' | 'support_manager' | 'ceo'
 └── manager_id (FK to agents.id)
 ```
 
@@ -193,11 +193,11 @@ sla_timers (Active SLA Tracking)
 -- Agents were duplicated in both tables
 users table: 
 ├── Customer: role='user'
-├── Agent: role='support_executive'  ❌ WRONG
+├── Agent: role='support_agent'  ❌ WRONG
 └── Manager: role='support_manager'  ❌ WRONG
 
 agents table:
-├── Agent: role='support_executive'  ❌ DUPLICATE
+├── Agent: role='support_agent'  ❌ DUPLICATE
 └── Manager: role='support_manager'  ❌ DUPLICATE
 ```
 
@@ -209,7 +209,7 @@ users table (Customers only):
 └── No staff members      ✅ CLEAN
 
 agents table (Staff only):
-├── Agent: role='support_executive'  ✅ CORRECT
+├── Agent: role='support_agent'  ✅ CORRECT
 ├── Manager: role='support_manager'   ✅ CORRECT
 └── CEO: role='ceo'                   ✅ CORRECT
 ```
@@ -246,12 +246,12 @@ if (agents.length === 0) {
 agents.role: 'agent' | 'manager' | 'ceo'
 
 // Frontend expects descriptive roles  
-mappedRole: 'support_executive' | 'support_manager' | 'ceo'
+mappedRole: 'support_agent' | 'support_manager' | 'ceo'
 
 // Mapping logic
 if (userType === 'agent') {
   if (user.role === 'agent' || !user.role) {
-    mappedRole = 'support_executive';
+    mappedRole = 'support_agent';
   } else if (user.role === 'manager') {
     mappedRole = 'support_manager';
   }
@@ -447,7 +447,7 @@ const cleanupAgentsFromUsers = async () => {
   const [staffInUsers] = await connection.execute(`
     SELECT id, name, email, role 
     FROM users 
-    WHERE role IN ('agent', 'manager', 'ceo', 'support_executive', 'support_manager')
+    WHERE role IN ('agent', 'manager', 'ceo', 'support_agent', 'support_manager')
   `);
 
   // Remove if exists in agents table
@@ -472,7 +472,7 @@ const cleanupAgentsFromUsers = async () => {
 const mapRole = (role, userType) => {
   if (userType === 'agent') {
     // Map database roles to frontend roles
-    if (role === 'agent' || !role) return 'support_executive';
+    if (role === 'agent' || !role) return 'support_agent';
     if (role === 'manager') return 'support_manager';
     return role; // ceo stays the same
   }

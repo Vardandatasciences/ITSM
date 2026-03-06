@@ -15,8 +15,8 @@ const AgentDashboard = ({ agent }) => {
     // Temporarily disable security check for debugging
     console.log('🔍 TEMPORARILY DISABLED SECURITY CHECK FOR DEBUGGING');
     /*
-    // Check if user is actually an agent (support_executive or admin)
-    if (!agent || (agent.role !== 'support_executive' && agent.role !== 'admin')) {
+    // Check if user is actually an agent (support_agent or admin)
+    if (!agent || (agent.role !== 'support_agent' && agent.role !== 'admin')) {
       console.log('❌ Access denied - User is not an agent:', agent?.role);
       console.log('🔄 Redirecting to login...');
       navigate('/login', { replace: true });

@@ -248,7 +248,7 @@ Response: {
       id: 456,
       name: "John Doe",
       email: "john@company.com",
-      role: "support_executive",
+      role: "support_agent",
       is_active: true
     }
   ]
@@ -430,7 +430,7 @@ if (!ticketsResponse.ok) {
 ```javascript
 // Check team member data
 const supportExecutives = teamMembersData.filter(member => 
-  member.role === 'support_executive' || 
+  member.role === 'support_agent' || 
   member.role === 'Support Executive'
 );
 

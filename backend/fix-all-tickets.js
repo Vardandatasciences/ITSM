@@ -28,7 +28,7 @@ async function fixAllTickets() {
     const [supportExecutives] = await connection.execute(`
       SELECT id, name, email, role, is_active
       FROM users 
-      WHERE role = 'support_executive' AND is_active = TRUE
+      WHERE role = 'support_agent' AND is_active = TRUE
       ORDER BY id ASC
     `);
     

@@ -87,9 +87,9 @@ const ManagerDashboard = ({ manager }) => {
 
     // Filter for support executives only (exclude CEO, Manager, Admin)
     const supportExecutives = teamMembersData.filter(member => 
-      member.role === 'support_executive' || 
+      member.role === 'support_agent' || 
       member.role === 'Support Executive' ||
-      member.role === 'support_executive'
+      member.role === 'support_agent'
     );
 
     setPerformanceMetrics({

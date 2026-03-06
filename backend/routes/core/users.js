@@ -114,14 +114,14 @@ router.post('/register', validateUserRegistration, async (req, res) => {
     let tenantId = 1; // Default to tenant 1
     try {
       const [tenants] = await pool.execute(
-        'SELECT id FROM tenants WHERE subdomain = "default" AND status = "active" LIMIT 1'
+        'SELECT id FROM tenants WHERE subdomain = \'default\' AND status = \'active\' LIMIT 1'
       );
       if (tenants.length > 0) {
         tenantId = tenants[0].id;
       } else {
         // If no default tenant, get the first active tenant
         const [firstTenant] = await pool.execute(
-          'SELECT id FROM tenants WHERE status = "active" LIMIT 1'
+          'SELECT id FROM tenants WHERE status = \'active\' LIMIT 1'
         );
         if (firstTenant.length > 0) {
           tenantId = firstTenant[0].id;

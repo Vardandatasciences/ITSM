@@ -147,7 +147,7 @@ const rolePermissions = {
     ]
   },
   
-  support_executive: {
+  support_agent: {
     dashboards: ['Agent Dashboard'],
     features: [
       'View assigned tickets',
@@ -199,7 +199,7 @@ const rolePermissions = {
 const checkAccess = (userRole, requiredRole) => {
   const roleHierarchy = {
     'customer': 1,
-    'support_executive': 2,
+    'support_agent': 2,
     'support_manager': 3,
     'ceo': 4
   };
@@ -210,7 +210,7 @@ const checkAccess = (userRole, requiredRole) => {
 // Dashboard access control
 const DashboardAccess = {
   'User Dashboard': ['customer'],
-  'Agent Dashboard': ['support_executive'],
+  'Agent Dashboard': ['support_agent'],
   'Manager Dashboard': ['support_manager', 'ceo'],
   'CEO Dashboard': ['ceo'],
   'Business Dashboard': ['support_manager', 'ceo']

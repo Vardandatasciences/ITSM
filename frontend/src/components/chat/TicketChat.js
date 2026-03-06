@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getAuthHeaders, authenticatedFetch } from '../../utils/api';
+import { getAuthHeaders, getTenantId } from '../../utils/api';
 import './TicketChat.css';
 
 const TicketChat = ({ ticket, onClose, onReplyAdded, user = null, userType = 'agent', awsStyle = false, showChatButton = true }) => {
@@ -7,7 +7,7 @@ const TicketChat = ({ ticket, onClose, onReplyAdded, user = null, userType = 'ag
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [newMessage, setNewMessage] = useState('');
-  const [agentName, setAgentName] = useState('Agent Smith'); // Default agent name
+  const [agentName, setAgentName] = useState('');
   const [error, setError] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
@@ -32,6 +32,7 @@ const TicketChat = ({ ticket, onClose, onReplyAdded, user = null, userType = 'ag
     return () => {
       cleanup();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchMessages and connectWebSocket are stable
   }, [ticket, showChat, showChatButton]);
 
   // Handle showChatButton prop changes
@@ -42,6 +43,13 @@ const TicketChat = ({ ticket, onClose, onReplyAdded, user = null, userType = 'ag
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Use logged-in agent's name when userType is agent
+  useEffect(() => {
+    if (userType === 'agent' && user) {
+      setAgentName(user.name || user.email || 'Agent');
+    }
+  }, [user, userType]);
 
   const cleanup = () => {
     if (wsRef.current) {
@@ -85,11 +93,13 @@ const TicketChat = ({ ticket, onClose, onReplyAdded, user = null, userType = 'ag
           if (isWebSocketReady()) {
             // Join the ticket room
             try {
+              const tenantId = ticket.tenant_id ?? getTenantId();
               wsRef.current.send(JSON.stringify({
                 type: 'JOIN_TICKET',
                 ticketId: ticket.id,
                 userId: user?.id || null,
-                userType: userType
+                userType: userType,
+                tenantId
               }));
             } catch (error) {
               console.warn('⚠️ Failed to join ticket room:', error);
@@ -256,7 +266,7 @@ const TicketChat = ({ ticket, onClose, onReplyAdded, user = null, userType = 'ag
             ticketId: ticket.id,
             message: messageText,
             userType: userType,
-            agentName: userType === 'agent' ? agentName : null,
+            agentName: userType === 'agent' ? (agentName || user?.name || user?.email || 'Agent') : null,
             customerName: userType === 'customer' ? (user?.name || user?.email) : null
           }));
         } catch (error) {
@@ -274,7 +284,7 @@ const TicketChat = ({ ticket, onClose, onReplyAdded, user = null, userType = 'ag
             ticketId: ticket.id,
             senderType: userType,
             senderId: user?.id || null,
-            senderName: userType === 'agent' ? agentName : (user?.name || user?.email),
+            senderName: userType === 'agent' ? (agentName || user?.name || user?.email || 'Agent') : (user?.name || user?.email),
             message: messageText
           })
         });
@@ -321,7 +331,7 @@ const TicketChat = ({ ticket, onClose, onReplyAdded, user = null, userType = 'ag
             type: 'TYPING',
             ticketId: ticket.id,
             userType: userType,
-            agentName: userType === 'agent' ? agentName : null,
+            agentName: userType === 'agent' ? (agentName || user?.name || user?.email || 'Agent') : null,
             customerName: userType === 'customer' ? (user?.name || user?.email) : null
           }));
         } catch (error) {
@@ -365,36 +375,8 @@ const TicketChat = ({ ticket, onClose, onReplyAdded, user = null, userType = 'ag
     return date.toLocaleString();
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'new': return '#3b82f6';
-      case 'in_progress': return '#f59e0b';
-      case 'escalated': return '#ef4444';
-      case 'closed': return '#10b981';
-      default: return '#6b7280';
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'new': return 'New';
-      case 'in_progress': return 'In Progress';
-      case 'escalated': return 'Escalated';
-      case 'closed': return 'Closed';
-      default: return status;
-    }
-  };
-
   const openChat = () => {
     setShowChat(true);
-  };
-
-  const closeChat = () => {
-    setShowChat(false);
-    cleanup();
-    if (onClose) {
-      onClose();
-    }
   };
 
   if (!ticket) return null;

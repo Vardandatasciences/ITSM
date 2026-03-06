@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getAuthHeaders, authenticatedFetch } from '../../utils/api';
+import { getAuthHeaders, getTenantId, authenticatedFetch } from '../../utils/api';
 import './RealTimeChat.css';
 
 const RealTimeChat = ({ ticket, user, userType, onClose, onReplyAdded }) => {
@@ -9,7 +9,7 @@ const RealTimeChat = ({ ticket, user, userType, onClose, onReplyAdded }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
   const [sending, setSending] = useState(false);
-  const [agentName, setAgentName] = useState('Agent Smith');
+  const [agentName, setAgentName] = useState('');
   
   const wsRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -34,6 +34,13 @@ const RealTimeChat = ({ ticket, user, userType, onClose, onReplyAdded }) => {
     scrollToBottom();
   }, [messages]);
 
+  // Use logged-in agent's name when userType is agent
+  useEffect(() => {
+    if (userType === 'agent' && user) {
+      setAgentName(user.name || user.email || 'Agent');
+    }
+  }, [user, userType]);
+
   const connectWebSocket = () => {
     try {
       wsRef.current = new WebSocket(WS_URL);
@@ -43,11 +50,13 @@ const RealTimeChat = ({ ticket, user, userType, onClose, onReplyAdded }) => {
         setIsConnected(true);
         
         // Join the ticket room
+        const tenantId = ticket.tenant_id ?? getTenantId();
         wsRef.current.send(JSON.stringify({
           type: 'JOIN_TICKET',
           ticketId: ticket.id,
           userId: user.id,
-          userType: userType
+          userType: userType,
+          tenantId
         }));
       };
 
@@ -159,7 +168,7 @@ const RealTimeChat = ({ ticket, user, userType, onClose, onReplyAdded }) => {
         ticketId: ticket.id,
         message: newMessage.trim(),
         userType: userType,
-        agentName: userType === 'agent' ? agentName : null,
+        agentName: userType === 'agent' ? (agentName || user?.name || user?.email || 'Agent') : null,
         customerName: userType === 'customer' ? (user.name || user.email) : null
       }));
       
@@ -185,7 +194,7 @@ const RealTimeChat = ({ ticket, user, userType, onClose, onReplyAdded }) => {
         type: 'TYPING',
         ticketId: ticket.id,
         userType: userType,
-        agentName: userType === 'agent' ? agentName : null,
+        agentName: userType === 'agent' ? (agentName || user?.name || user?.email || 'Agent') : null,
         customerName: userType === 'customer' ? (user.name || user.email) : null
       }));
     }

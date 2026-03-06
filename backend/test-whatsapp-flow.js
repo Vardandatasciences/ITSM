@@ -20,7 +20,7 @@ async function testWhatsAppFlow() {
     // Test 2: Simulate product selection flow
     console.log('\n📋 Test 2: Product selection flow...');
     const [products] = await pool.execute(
-      'SELECT id, name, description, sla_time_minutes FROM products WHERE status = "active" ORDER BY name ASC LIMIT 3'
+      'SELECT id, name, description, sla_time_minutes FROM products WHERE status = \'active\' ORDER BY name ASC LIMIT 3'
     );
     
     console.log(`✅ Found ${products.length} products for selection`);

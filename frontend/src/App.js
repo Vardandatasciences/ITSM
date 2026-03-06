@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import GlobalLogin from './components/auth/GlobalLogin';
-import AutoLoginPage from './components/common/AutoLoginPage';
+import SupportEntry from './components/common/SupportEntry';
 import AutoLoginTest from './components/common/AutoLoginTest';
 import UserDashboard from './components/dashboards/UserDashboard';
 import AgentDashboard from './components/dashboards/AgentDashboard';
@@ -79,7 +79,7 @@ function App() {
         // Check if session is still valid
         if (checkSessionExpiration()) {
           // For staff members, only allow if they came from global login (not auto-login)
-          if (userData.role && ['support_executive', 'support_manager', 'ceo', 'admin'].includes(userData.role)) {
+          if (userData.role && ['support_agent', 'support_manager', 'ceo', 'admin'].includes(userData.role)) {
             // Check if this is from auto-login context
             const autoLoginContext = localStorage.getItem('autoLoginContext');
             if (autoLoginContext) {
@@ -118,7 +118,7 @@ function App() {
         console.log('✅ Found legacy user data:', legacyUserData);
         
         // For staff members, only allow if they came from global login (not auto-login)
-        if (legacyUserData.role && ['support_executive', 'support_manager', 'ceo', 'admin'].includes(legacyUserData.role)) {
+        if (legacyUserData.role && ['support_agent', 'support_manager', 'ceo', 'admin'].includes(legacyUserData.role)) {
           // Check if this is from auto-login context
           const autoLoginContext = localStorage.getItem('autoLoginContext');
           if (autoLoginContext) {
@@ -146,12 +146,12 @@ function App() {
     if (autoLoginContext) {
       try {
         const context = JSON.parse(autoLoginContext);
-        if (context.source === 'auto-login') {
+        if (context.source === 'auto-login' || context.source === 'support-url') {
           // Only allow auto-login for customers, not staff members
           const storedUser = localStorage.getItem('userData') || localStorage.getItem('tickUser');
           if (storedUser) {
             const userData = JSON.parse(storedUser);
-            if (userData.role && ['support_executive', 'support_manager', 'ceo', 'admin'].includes(userData.role)) {
+            if (userData.role && ['support_agent', 'support_manager', 'ceo', 'admin'].includes(userData.role)) {
               console.log('❌ Auto-login context found for staff member - clearing');
               localStorage.removeItem('autoLoginContext');
               localStorage.removeItem('userData');
@@ -316,7 +316,7 @@ function App() {
     }
     
     // Check if user is a staff member (agent, manager, ceo, admin)
-    const isStaffMember = user.role && ['support_executive', 'support_manager', 'ceo', 'admin'].includes(user.role);
+    const isStaffMember = user.role && ['support_agent', 'support_manager', 'ceo', 'admin'].includes(user.role);
     if (!isStaffMember) {
       console.log('❌ ProtectedRoute: User is not a staff member, redirecting to login');
       return <Navigate to="/login" replace />;
@@ -331,7 +331,6 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<GlobalLogin onLogin={handleUserLogin} />} />
-        <Route path="/auto-login/:email/:product/:phone" element={<AutoLoginPage onLogin={handleUserLogin} />} />
         <Route path="/test-auto-login" element={<AutoLoginTest />} />
         
         {/* Business dashboard - accessible without login */}
@@ -341,7 +340,7 @@ function App() {
         <Route path="/" element={
           user ? (
             // Staff members go to their respective dashboards
-            user.role === 'support_executive' || user.role === 'admin' ? (
+            user.role === 'support_agent' || user.role === 'admin' ? (
               <Navigate to="/agentdashboard" replace />
             ) : user.role === 'support_manager' ? (
               <Navigate to="/manager" replace />
@@ -370,7 +369,7 @@ function App() {
             {(() => {
               console.log('🔍 AgentDashboard route check - user:', user);
               console.log('🔍 User role:', user?.role);
-              return user && (user.role === 'support_executive' || user.role === 'admin') ? (
+              return user && (user.role === 'support_agent' || user.role === 'admin') ? (
                 <AgentDashboard agent={user} />
               ) : (
                 <Navigate to="/login" replace />
@@ -405,11 +404,14 @@ function App() {
         <Route path="/simple-test" element={<ProtectedRoute>{user && <SimpleTableTest />}</ProtectedRoute>} />
         <Route path="/ticket/:ticketId" element={<ProtectedRoute>{user && <TicketDetailPage />}</ProtectedRoute>} />
         
+        {/* Universal Support URL: /{product}?user_email= - must be before catch-all */}
+        <Route path="/:product" element={<SupportEntry onLogin={handleUserLogin} />} />
+        
         {/* Catch all route - redirect to appropriate dashboard based on user role */}
         <Route path="*" element={
           user ? (
             // Staff members go to their respective dashboards
-            user.role === 'support_executive' || user.role === 'admin' ? (
+            user.role === 'support_agent' || user.role === 'admin' ? (
               <Navigate to="/agentdashboard" replace />
             ) : user.role === 'support_manager' ? (
               <Navigate to="/manager" replace />

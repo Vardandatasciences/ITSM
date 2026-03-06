@@ -11,11 +11,21 @@ const dbConfig = {
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  charset: 'utf8mb4'
+  charset: 'utf8mb4',
+  // Reduce stale connections (e.g. Aiven MySQL closes idle connections)
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
+  connectTimeout: 30000,
+  maxIdle: 5
 };
 
 // Create connection pool
 const pool = mysql.createPool(dbConfig);
+
+// Handle pool errors to avoid uncaught exceptions
+pool.on('error', (err) => {
+  console.error('Database pool error:', err.message);
+});
 
 // Test database connection
 const testConnection = async () => {
@@ -367,6 +377,16 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // Add slug column to products for Universal Support URL (e.g., /grc, /voiceloop)
+    try {
+      await connection.execute(`
+        ALTER TABLE products ADD COLUMN slug VARCHAR(50) 
+        COMMENT 'URL slug for support integration (e.g., grc, voiceloop)'
+      `);
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELD') console.log('Products slug column:', e.message);
+    }
+
     // Create modules table for product sub-components
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS modules (
@@ -596,7 +616,7 @@ const initializeDatabase = async () => {
       FROM users u
       LEFT JOIN ticket_assignments ta ON u.id = ta.agent_id AND ta.is_active = TRUE
       LEFT JOIN tickets t ON ta.ticket_id = t.id
-      WHERE u.role IN ('agent', 'support_executive', 'support_manager')
+      WHERE u.role IN ('agent', 'support_agent', 'support_manager')
       GROUP BY u.id, u.name, u.email, u.role
     `);
 

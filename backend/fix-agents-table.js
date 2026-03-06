@@ -44,7 +44,7 @@ async function fixAgentsTable() {
               alterStatement = 'ADD COLUMN email VARCHAR(100) UNIQUE';
               break;
             case 'role':
-              alterStatement = 'ADD COLUMN role ENUM("support_executive", "support_manager", "admin") DEFAULT "support_executive"';
+              alterStatement = 'ADD COLUMN role ENUM("support_agent", "support_manager", "admin") DEFAULT "support_agent"';
               break;
             case 'department':
               alterStatement = 'ADD COLUMN department VARCHAR(100)';
@@ -101,7 +101,7 @@ async function fixAgentsTable() {
         
         if (!agent.role) {
           updates.push('role = ?');
-          values.push('support_executive');
+          values.push('support_agent');
         }
         
         if (!agent.is_active) {

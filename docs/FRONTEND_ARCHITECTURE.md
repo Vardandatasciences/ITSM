@@ -368,7 +368,7 @@ const App = () => {
         } />
         
         <Route path="/agentdashboard" element={
-          <ProtectedRoute requiredRole="support_executive">
+          <ProtectedRoute requiredRole="support_agent">
             <AgentDashboard />
           </ProtectedRoute>
         } />
@@ -411,7 +411,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
 
   // Check if user is staff member for staff routes
   const isStaffRoute = ['agentdashboard', 'managerdashboard', 'ceodashboard'].includes(location.pathname);
-  const isStaffMember = ['support_executive', 'support_manager', 'ceo', 'admin'].includes(user.role);
+  const isStaffMember = ['support_agent', 'support_manager', 'ceo', 'admin'].includes(user.role);
   
   if (isStaffRoute && !isStaffMember) {
     return <Navigate to="/login" replace />;
@@ -444,7 +444,7 @@ const NavigationMenu = () => {
           { label: 'Submit Ticket', path: '/userdashboard/submit' }
         ];
       
-      case 'support_executive':
+      case 'support_agent':
         return [
           ...baseItems,
           { label: 'Assigned Tickets', path: '/agentdashboard/tickets' },
@@ -551,7 +551,7 @@ const AgentDashboard = () => {
   };
 
   return (
-    <BaseDashboard title="Agent Dashboard" userRole="support_executive">
+    <BaseDashboard title="Agent Dashboard" userRole="support_agent">
       <div className="agent-dashboard">
         <div className="dashboard-grid">
           <div className="tickets-section">
@@ -646,7 +646,7 @@ const DashboardAnalytics = ({ userRole }) => {
 
   const getMetricsForRole = () => {
     switch (userRole) {
-      case 'support_executive':
+      case 'support_agent':
         return {
           assignedTickets: metrics.assignedTickets || 0,
           resolvedToday: metrics.resolvedToday || 0,

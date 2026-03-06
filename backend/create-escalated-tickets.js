@@ -19,7 +19,7 @@ async function checkProductsAndCreateEscalatedTickets() {
     
     // First, check what products exist
     console.log('\n📦 Checking existing products...');
-    const [products] = await connection.execute('SELECT id, name FROM products WHERE status = "active"');
+    const [products] = await connection.execute('SELECT id, name FROM products WHERE status = \'active\'');
     console.log(`Found ${products.length} active products:`);
     products.forEach(product => {
       console.log(`  - ID: ${product.id}, Name: ${product.name}`);

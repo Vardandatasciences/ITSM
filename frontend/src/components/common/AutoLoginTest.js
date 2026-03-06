@@ -8,11 +8,11 @@ const AutoLoginTest = () => {
   const [phone, setPhone] = useState('1234567890');
   const navigate = useNavigate();
 
-  const handleTestAutoLogin = () => {
-    console.log('🧪 Testing auto-login with:', { email, product, phone });
+  const handleTestSupportUrl = () => {
+    console.log('🧪 Testing Universal Support URL with:', { email, product });
     
-    // Navigate to auto-login route
-    navigate(`/auto-login/${encodeURIComponent(email)}/${encodeURIComponent(product)}/${encodeURIComponent(phone)}`);
+    // Navigate to support URL: /{product}?user_email={email}
+    navigate(`/${encodeURIComponent(product)}?user_email=${encodeURIComponent(email)}`);
   };
 
   const handleTestBusinessDashboard = () => {
@@ -42,10 +42,11 @@ const AutoLoginTest = () => {
 
   return (
     <div className="auto-login-test">
-      <h1>🧪 Auto-Login Test Page</h1>
+      <h1>🧪 Support URL Test Page</h1>
       
       <div className="test-section">
-        <h2>Test Auto-Login Flow</h2>
+        <h2>Test Universal Support URL</h2>
+        <p className="test-hint">URL format: /&#123;product&#125;?user_email=&#123;email&#125;</p>
         <div className="form-group">
           <label>Email:</label>
           <input 
@@ -67,7 +68,7 @@ const AutoLoginTest = () => {
         </div>
         
         <div className="form-group">
-          <label>Phone:</label>
+          <label>Phone (optional):</label>
           <input 
             type="text" 
             value={phone} 
@@ -75,8 +76,8 @@ const AutoLoginTest = () => {
             placeholder="Enter phone"
           />
         </div>
-        <button onClick={handleTestAutoLogin} className="test-btn">
-          🚀 Test Auto-Login
+        <button onClick={handleTestSupportUrl} className="test-btn">
+          🚀 Test Support URL
         </button>
       </div>
 
@@ -105,18 +106,15 @@ const AutoLoginTest = () => {
       <div className="info-section">
         <h3>📋 Test Instructions:</h3>
         <ol>
-          <li>Click "Test Auto-Login" to test the auto-login flow</li>
-          <li>Click "Test Business Dashboard" to test business dashboard access</li>
-          <li>Click "Test Direct Dashboard" to test protected route access</li>
+          <li>Enter email and product (e.g. grc, voiceloop) - product must exist in the system</li>
+          <li>Click "Test Support URL" to test the Universal Support URL flow</li>
           <li>Use debug tools to inspect storage and clear data</li>
         </ol>
         
         <h3>🔍 Expected Behavior:</h3>
         <ul>
-          <li>Auto-login should work without redirecting to login page</li>
-          <li>Business dashboard should be accessible without authentication</li>
-          <li>Protected routes should show loading during auto-login</li>
-          <li>After successful auto-login, user should be redirected to dashboard</li>
+          <li>Support URL should find/create user and redirect to dashboard</li>
+          <li>Form will be pre-filled with product from the URL</li>
         </ul>
       </div>
     </div>

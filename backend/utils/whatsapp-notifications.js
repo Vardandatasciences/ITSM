@@ -14,6 +14,24 @@ const axiosConfig = {
   }
 };
 
+// Get base URL for links (matches emailService)
+function getAppUrl() {
+  return process.env.PUBLIC_BASE_URL || 'http://localhost:3000';
+}
+
+// Notification for ticket creation
+async function sendTicketCreatedNotification(ticket) {
+  if (!ticket.mobile) return null;
+  const baseUrl = getAppUrl();
+  const whatsappMessage = `🆕 *Ticket Created*\n\n` +
+    `🎫 *Ticket ID:* #${ticket.id}\n` +
+    `🏷️ *Issue:* ${ticket.issue_title || 'Support Request'}\n\n` +
+    `Your support ticket has been created. We'll assign an agent shortly.\n\n` +
+    `🔗 *View Ticket:* ${baseUrl}/chat/${ticket.id}\n\n` +
+    `Thank you for contacting us!`;
+  return await sendWhatsAppMessage(ticket.mobile, whatsappMessage);
+}
+
 // Function to send WhatsApp message
 async function sendWhatsAppMessage(phoneNumber, message) {
   try {
@@ -66,6 +84,7 @@ async function sendAgentReplyNotification(ticket, agentName, message) {
   const formattedMessage = message.length > 100 ? 
     message.substring(0, 100) + '...' : message;
   
+  const baseUrl = getAppUrl();
   const whatsappMessage = `🔔 *New Reply from Support Team*\n\n` +
     `🎫 *Ticket:* #${ticket.id}\n` +
     `🏷️ *Issue:* ${ticket.issue_title}\n` +
@@ -73,7 +92,7 @@ async function sendAgentReplyNotification(ticket, agentName, message) {
     `💬 *Reply:*\n${formattedMessage}\n\n` +
     `📱 *Want to continue chatting?*\n` +
     `Reply to this message or open the app for full conversation.\n\n` +
-    `🔗 *App Link:* https://yourdomain.com/tickets/${ticket.id}\n\n` +
+    `🔗 *App Link:* ${baseUrl}/chat/${ticket.id}\n\n` +
     `Thank you for your patience! 🙏`;
   
   return await sendWhatsAppMessage(ticket.mobile, whatsappMessage);
@@ -97,12 +116,13 @@ async function sendStatusUpdateNotification(ticket, newStatus) {
     'escalated': 'Escalated'
   };
   
+  const baseUrl = getAppUrl();
   const whatsappMessage = `📋 *Ticket Status Update*\n\n` +
     `🎫 *Ticket ID:* #${ticket.id}\n` +
     `🏷️ *Issue:* ${ticket.issue_title}\n` +
     `📊 *Status:* ${statusEmoji[newStatus]} ${statusText[newStatus]}\n\n` +
     `Your ticket has been updated. We'll keep you informed of any progress!\n\n` +
-    `🔗 *View Details:* https://yourdomain.com/tickets/${ticket.id}`;
+    `🔗 *View Details:* ${baseUrl}/chat/${ticket.id}`;
   
   return await sendWhatsAppMessage(ticket.mobile, whatsappMessage);
 }
@@ -110,13 +130,13 @@ async function sendStatusUpdateNotification(ticket, newStatus) {
 // Notification for ticket assignment
 async function sendAssignmentNotification(ticket, agentName) {
   if (!ticket.mobile) return null;
-  
+  const baseUrl = getAppUrl();
   const whatsappMessage = `👨‍💼 *Ticket Assigned*\n\n` +
     `🎫 *Ticket ID:* #${ticket.id}\n` +
     `🏷️ *Issue:* ${ticket.issue_title}\n` +
     `👨‍💼 *Assigned to:* ${agentName}\n\n` +
     `Your ticket has been assigned to a support agent who will assist you shortly.\n\n` +
-    `🔗 *View Details:* https://yourdomain.com/tickets/${ticket.id}`;
+    `🔗 *View Details:* ${baseUrl}/chat/${ticket.id}`;
   
   return await sendWhatsAppMessage(ticket.mobile, whatsappMessage);
 }
@@ -124,14 +144,14 @@ async function sendAssignmentNotification(ticket, agentName) {
 // Notification for ticket escalation
 async function sendEscalationNotification(ticket, reason = '') {
   if (!ticket.mobile) return null;
-  
+  const baseUrl = getAppUrl();
   const whatsappMessage = `🚨 *Ticket Escalated*\n\n` +
     `🎫 *Ticket ID:* #${ticket.id}\n` +
     `🏷️ *Issue:* ${ticket.issue_title}\n` +
     `📊 *Status:* Escalated to Senior Support\n\n` +
     `${reason ? `📝 *Reason:* ${reason}\n\n` : ''}` +
     `Your ticket has been escalated for specialized attention. We'll get back to you soon.\n\n` +
-    `🔗 *View Details:* https://yourdomain.com/tickets/${ticket.id}`;
+    `🔗 *View Details:* ${baseUrl}/chat/${ticket.id}`;
   
   return await sendWhatsAppMessage(ticket.mobile, whatsappMessage);
 }
@@ -139,15 +159,15 @@ async function sendEscalationNotification(ticket, reason = '') {
 // Notification for ticket resolution
 async function sendResolutionNotification(ticket, resolution = '') {
   if (!ticket.mobile) return null;
-  
+  const baseUrl = getAppUrl();
   const whatsappMessage = `✅ *Ticket Resolved*\n\n` +
     `🎫 *Ticket ID:* #${ticket.id}\n` +
     `🏷️ *Issue:* ${ticket.issue_title}\n` +
     `📊 *Status:* Resolved\n\n` +
     `${resolution ? `💡 *Resolution:* ${resolution}\n\n` : ''}` +
     `Your ticket has been resolved. Thank you for using our support service!\n\n` +
-    `🔗 *View Details:* https://yourdomain.com/tickets/${ticket.id}\n\n` +
-    `📝 *Rate your experience:* https://yourdomain.com/feedback/${ticket.id}`;
+    `🔗 *View Details:* ${baseUrl}/chat/${ticket.id}\n\n` +
+    `📝 *Rate your experience:* ${baseUrl}/feedback/${ticket.id}`;
   
   return await sendWhatsAppMessage(ticket.mobile, whatsappMessage);
 }
@@ -155,13 +175,13 @@ async function sendResolutionNotification(ticket, resolution = '') {
 // Notification for SLA breach warning
 async function sendSLABreachWarning(ticket, slaTime) {
   if (!ticket.mobile) return null;
-  
+  const baseUrl = getAppUrl();
   const whatsappMessage = `⏰ *SLA Warning*\n\n` +
     `🎫 *Ticket ID:* #${ticket.id}\n` +
     `🏷️ *Issue:* ${ticket.issue_title}\n` +
     `⏱️ *SLA Time:* ${slaTime} minutes\n\n` +
     `Your ticket is approaching the SLA time limit. We're working to resolve it quickly.\n\n` +
-    `🔗 *View Details:* https://yourdomain.com/tickets/${ticket.id}`;
+    `🔗 *View Details:* ${baseUrl}/chat/${ticket.id}`;
   
   return await sendWhatsAppMessage(ticket.mobile, whatsappMessage);
 }
@@ -169,12 +189,12 @@ async function sendSLABreachWarning(ticket, slaTime) {
 // Notification for customer satisfaction request
 async function sendSatisfactionRequest(ticket) {
   if (!ticket.mobile) return null;
-  
+  const baseUrl = getAppUrl();
   const whatsappMessage = `⭐ *Rate Your Experience*\n\n` +
     `🎫 *Ticket ID:* #${ticket.id}\n` +
     `🏷️ *Issue:* ${ticket.issue_title}\n\n` +
     `How was your support experience? Please rate us:\n\n` +
-    `🔗 *Rate Now:* https://yourdomain.com/feedback/${ticket.id}\n\n` +
+    `🔗 *Rate Now:* ${baseUrl}/feedback/${ticket.id}\n\n` +
     `Your feedback helps us improve our service! 🙏`;
   
   return await sendWhatsAppMessage(ticket.mobile, whatsappMessage);
@@ -182,6 +202,7 @@ async function sendSatisfactionRequest(ticket) {
 
 module.exports = {
   sendWhatsAppMessage,
+  sendTicketCreatedNotification,
   sendAgentReplyNotification,
   sendStatusUpdateNotification,
   sendAssignmentNotification,

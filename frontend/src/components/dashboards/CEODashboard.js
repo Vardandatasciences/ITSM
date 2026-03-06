@@ -149,7 +149,7 @@ const CEODashboard = ({ ceo }) => {
       const [ticketsResponse, departmentsResponse, agentsResponse, assignmentsResponse] = await Promise.all([
         fetch('http://localhost:5000/api/tickets', { headers }),
         fetch('http://localhost:5000/api/agents?role=support_manager', { headers }),
-        fetch('http://localhost:5000/api/agents?role=support_executive', { headers }),
+        fetch('http://localhost:5000/api/agents?role=support_agent', { headers }),
         fetch('http://localhost:5000/api/assignments', { headers })
       ]);
 

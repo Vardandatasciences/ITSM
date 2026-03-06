@@ -98,7 +98,7 @@ const AgentDashboard = () => {
   const fetchAgents = async () => {
     try {
       const headers = getAuthHeaders();
-      const response = await fetch(buildApiUrl('/api/agents?role=support_executive'), {
+      const response = await fetch(buildApiUrl('/api/agents?role=support_agent'), {
         method: 'GET',
         headers: headers
       });

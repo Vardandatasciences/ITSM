@@ -144,7 +144,7 @@ Agents → SLA → Timers → Products → Modules
 #### **Role-Based Access Control**
 ```
 Users Table (Customers)     Agents Table (Staff)
-├── role: 'user'           ├── role: 'support_executive'
+├── role: 'user'           ├── role: 'support_agent'
 ├── Limited access         ├── role: 'support_manager'  
 └── Own tickets only       ├── role: 'ceo'
                            └── Full system access

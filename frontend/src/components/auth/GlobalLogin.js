@@ -86,7 +86,7 @@ const GlobalLogin = ({ onLogin }) => {
         }
         
         // Force immediate navigation based on role - NO FALLBACKS
-        if (role === 'support_executive' || role === 'admin') {
+        if (role === 'support_agent' || role === 'admin') {
           console.log('🔄 FORCE REDIRECT: Agent to /agentdashboard');
           navigate('/agentdashboard', { replace: true });
         } else if (role === 'support_manager' || role === 'manager') {

@@ -1977,7 +1977,7 @@ body:has(.add-sla-form) {
   text-transform: capitalize;
 }
 
-.role-badge.support_executive {
+.role-badge.support_agent {
   background: var(--primary-color);
   color: white;
 }

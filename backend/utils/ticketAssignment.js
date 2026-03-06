@@ -44,14 +44,14 @@ class TicketAssignmentService {
           GROUP BY ta.agent_id
         ) assignment_counts ON a.id = assignment_counts.agent_id
         WHERE a.is_active = TRUE 
-          AND a.role IN ('support_executive')
-          AND a.tenant_id = ?
+          AND a.role = 'support_agent'
+          AND (a.tenant_id = ? OR a.tenant_id IS NULL)
         ORDER BY active_tickets ASC, a.id ASC
         LIMIT 1
       `, [tenantId, tenantId]);
 
       if (agents.length === 0) {
-        console.log('⚠️ No active agents found (role = agent or support_executive).');
+        console.log('⚠️ No active agents found (role = agent or support_agent).');
         return null;
       }
 
@@ -80,44 +80,85 @@ class TicketAssignmentService {
     
     try {
       // Get the agent with the least tickets (tenant-filtered)
-      const agent = await this.getAgentWithLeastTickets(tenantId);
+      let agent = await this.getAgentWithLeastTickets(tenantId);
+      // Fallback: if no agents for this tenant, try default tenant 1 (handles tenant mismatch)
+      if (!agent && tenantId !== 1) {
+        console.log(`⚠️ No agents for tenant ${tenantId}, falling back to tenant 1`);
+        agent = await this.getAgentWithLeastTickets(1);
+      }
       
       if (!agent) {
         throw new Error('No active agents available for ticket assignment');
       }
       
-      // Update the ticket with the selected agent (for backward compatibility, tenant-filtered)
-      const [result] = await connection.execute(
-        'UPDATE tickets SET assigned_to = ?, assigned_by = ? WHERE id = ? AND tenant_id = ?',
+      // Update the ticket with the selected agent (tenant-filtered when ticket has tenant_id)
+      let [result] = await connection.execute(
+        'UPDATE tickets SET assigned_to = ?, assigned_by = ? WHERE id = ? AND (tenant_id = ? OR tenant_id IS NULL)',
         [agent.id, assignedBy, ticketId, tenantId]
       );
-      
+      // Fallback: if ticket has NULL tenant_id, update by id only
+      if (result.affectedRows === 0) {
+        [result] = await connection.execute(
+          'UPDATE tickets SET assigned_to = ?, assigned_by = ? WHERE id = ?',
+          [agent.id, assignedBy, ticketId]
+        );
+      }
       if (result.affectedRows === 0) {
         throw new Error('Ticket not found or already assigned');
       }
       
-      // Create assignment record in the new ticket_assignments table (with tenant_id)
-      await connection.execute(
-        `INSERT INTO ticket_assignments (
-          tenant_id, ticket_id, agent_id, assigned_by, assignment_reason, is_active
-        ) VALUES (?, ?, ?, ?, ?, TRUE)`,
-        [tenantId, ticketId, agent.id, assignedBy || agent.id, 'Automatic equal distribution assignment']
-      );
+      // Create assignment record in ticket_assignments (non-fatal: agents table vs users FK may differ)
+      try {
+        const [cols] = await connection.execute(
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ticket_assignments' AND COLUMN_NAME = 'tenant_id'`
+        );
+        if (cols.length > 0) {
+          await connection.execute(
+            `INSERT INTO ticket_assignments (
+              tenant_id, ticket_id, agent_id, assigned_by, assignment_reason, is_active
+            ) VALUES (?, ?, ?, ?, ?, TRUE)`,
+            [tenantId, ticketId, agent.id, assignedBy || agent.id, 'Automatic equal distribution assignment']
+          );
+        } else {
+          await connection.execute(
+            `INSERT INTO ticket_assignments (ticket_id, agent_id, assigned_by, assignment_reason, is_active)
+             VALUES (?, ?, ?, ?, TRUE)`,
+            [ticketId, agent.id, assignedBy || agent.id, 'Automatic equal distribution assignment']
+          );
+        }
+      } catch (insertErr) {
+        // Don't fail assignment - tickets.assigned_to is what agents use; ticket_assignments is audit
+        console.warn(`⚠️ ticket_assignments insert skipped (assignment still applied):`, insertErr.message);
+      }
       
       console.log(`✅ Ticket ${ticketId} assigned to ${agent.name} (ID: ${agent.id}) using equal distribution`);
       
-      // Send email notification to the assigned agent
+      // Send email notification to the assigned agent + WhatsApp to customer
       try {
-        // Get ticket details for the email notification (tenant-filtered)
+        // Get ticket details for notifications (include mobile for WhatsApp)
         const [ticketDetails] = await connection.execute(
-          'SELECT id, name, issue_title FROM tickets WHERE id = ? AND tenant_id = ?',
-          [ticketId, tenantId]
+          'SELECT id, name, issue_title, mobile FROM tickets WHERE id = ?',
+          [ticketId]
         );
         
         if (ticketDetails.length > 0) {
           const ticket = ticketDetails[0];
           const customerName = ticket.name || 'Customer';
           const ticketTitle = ticket.issue_title || 'Support Request';
+          
+          // Send WhatsApp to customer when ticket is assigned
+          if (ticket.mobile) {
+            try {
+              const { sendAssignmentNotification } = require('../utils/whatsapp-notifications');
+              await sendAssignmentNotification(
+                { id: ticketId, mobile: ticket.mobile, issue_title: ticketTitle },
+                agent.name
+              );
+            } catch (waErr) {
+              console.warn('⚠️ WhatsApp assignment notification failed:', waErr?.message);
+            }
+          }
           
           // Send email notification to agent
           const emailResult = await emailService.sendAgentAssignmentNotification(
@@ -206,7 +247,7 @@ class TicketAssignmentService {
           WHERE assigned_to IS NOT NULL AND tenant_id = ?
           GROUP BY assigned_to
         ) total_tickets ON u.id = total_tickets.assigned_to
-        WHERE u.is_active = TRUE AND u.role IN ('support_executive') AND u.tenant_id = ?
+        WHERE u.is_active = TRUE AND u.role IN ('support_agent') AND u.tenant_id = ?
         ORDER BY total_tickets.count DESC, u.name ASC
       `, [tenantId, tenantId, tenantId, tenantId, tenantId]);
       

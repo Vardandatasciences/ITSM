@@ -13,7 +13,7 @@ const extractTenant = async (req) => {
     
     if (subdomain && subdomain !== 'www' && subdomain !== 'api' && subdomain !== 'localhost') {
       const [tenants] = await pool.execute(
-        'SELECT * FROM tenants WHERE subdomain = ? AND status = "active"',
+        'SELECT * FROM tenants WHERE subdomain = ? AND status = \'active\'',
         [subdomain]
       );
       if (tenants.length > 0) {
@@ -26,7 +26,7 @@ const extractTenant = async (req) => {
     const tenantId = req.headers['x-tenant-id'];
     if (tenantId) {
       const [tenants] = await pool.execute(
-        'SELECT * FROM tenants WHERE id = ? AND status = "active"',
+        'SELECT * FROM tenants WHERE id = ? AND status = \'active\'',
         [tenantId]
       );
       if (tenants.length > 0) {
@@ -38,7 +38,7 @@ const extractTenant = async (req) => {
     // Method 3a: From authenticated user (if already set by auth middleware)
     if (req.user && req.user.tenant_id) {
       const [tenants] = await pool.execute(
-        'SELECT * FROM tenants WHERE id = ? AND status = "active"',
+        'SELECT * FROM tenants WHERE id = ? AND status = \'active\'',
         [req.user.tenant_id]
       );
       if (tenants.length > 0) {
@@ -59,7 +59,7 @@ const extractTenant = async (req) => {
           
           if (tenantIdFromToken) {
             const [tenants] = await pool.execute(
-              'SELECT * FROM tenants WHERE id = ? AND status = "active"',
+              'SELECT * FROM tenants WHERE id = ? AND status = \'active\'',
               [tenantIdFromToken]
             );
             if (tenants.length > 0) {
@@ -79,7 +79,7 @@ const extractTenant = async (req) => {
             
             if (agents.length > 0 && agents[0].tenant_id) {
               const [tenants] = await pool.execute(
-                'SELECT * FROM tenants WHERE id = ? AND status = "active"',
+                'SELECT * FROM tenants WHERE id = ? AND status = \'active\'',
                 [agents[0].tenant_id]
               );
               if (tenants.length > 0) {
@@ -96,7 +96,7 @@ const extractTenant = async (req) => {
             
             if (users.length > 0 && users[0].tenant_id) {
               const [tenants] = await pool.execute(
-                'SELECT * FROM tenants WHERE id = ? AND status = "active"',
+                'SELECT * FROM tenants WHERE id = ? AND status = \'active\'',
                 [users[0].tenant_id]
               );
               if (tenants.length > 0) {
@@ -116,7 +116,7 @@ const extractTenant = async (req) => {
     if (process.env.NODE_ENV === 'development') {
       // Try to find default tenant by subdomain
       const [defaultTenants] = await pool.execute(
-        'SELECT * FROM tenants WHERE subdomain = "default" AND status = "active" LIMIT 1'
+        'SELECT * FROM tenants WHERE subdomain = \'default\' AND status = \'active\' LIMIT 1'
       );
       if (defaultTenants.length > 0) {
         console.log(`⚠️ Using default tenant for development: ${defaultTenants[0].name} (ID: ${defaultTenants[0].id})`);
@@ -125,7 +125,7 @@ const extractTenant = async (req) => {
       
       // If no default tenant, get first active tenant
       const [firstTenants] = await pool.execute(
-        'SELECT * FROM tenants WHERE status = "active" LIMIT 1'
+        'SELECT * FROM tenants WHERE status = \'active\' LIMIT 1'
       );
       if (firstTenants.length > 0) {
         console.log(`⚠️ Using first active tenant for development: ${firstTenants[0].name} (ID: ${firstTenants[0].id})`);
@@ -221,7 +221,7 @@ const verifyTenantAccess = async (req, res, next) => {
       // Also fetch and set the full tenant object
       try {
         const [tenants] = await pool.execute(
-          'SELECT * FROM tenants WHERE id = ? AND status = "active"',
+          'SELECT * FROM tenants WHERE id = ? AND status = \'active\'',
           [req.user.tenant_id]
         );
         if (tenants.length > 0) {

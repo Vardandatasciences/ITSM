@@ -241,7 +241,7 @@ const fetchExecutiveData = async (isRefresh = false) => {
     const [ticketsResponse, departmentsResponse, agentsResponse, assignmentsResponse] = await Promise.all([
       fetch('/api/tickets', { headers }),
       fetch('/api/agents?role=support_manager', { headers }),
-      fetch('/api/agents?role=support_executive', { headers }),
+      fetch('/api/agents?role=support_agent', { headers }),
       fetch('/api/assignments', { headers })
     ]);
     
@@ -270,7 +270,7 @@ const fetchExecutiveData = async () => {
   const [ticketsResponse, departmentsResponse, agentsResponse] = await Promise.all([
     fetch('/api/tickets'),
     fetch('/api/agents?role=support_manager'),
-    fetch('/api/agents?role=support_executive')
+    fetch('/api/agents?role=support_agent')
   ]);
   
   return {
@@ -613,7 +613,7 @@ const fetchAllData = async () => {
   const [tickets, departments, agents, assignments] = await Promise.all([
     fetch('/api/tickets'),
     fetch('/api/agents?role=support_manager'),
-    fetch('/api/agents?role=support_executive'),
+    fetch('/api/agents?role=support_agent'),
     fetch('/api/assignments')
   ]);
   

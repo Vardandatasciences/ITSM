@@ -32,7 +32,7 @@ const BusinessDashboard = () => {
   const [newAgent, setNewAgent] = useState({
     name: '',
     email: '',
-    role: 'support_executive',
+    role: 'support_agent',
     manager_id: '',
     department: ''
   });
@@ -265,7 +265,7 @@ const BusinessDashboard = () => {
       const agentData = {
         name: newAgent.name.trim(),
         email: newAgent.email.trim(),
-        role: newAgent.role || 'support_executive',
+        role: newAgent.role || 'support_agent',
         manager_id: newAgent.manager_id || null,
         department: newAgent.department || null
       };
@@ -289,7 +289,7 @@ const BusinessDashboard = () => {
         setNewAgent({
           name: '',
           email: '',
-          role: 'support_executive',
+          role: 'support_agent',
           manager_id: '',
           department: ''
         });
@@ -2253,7 +2253,7 @@ const BusinessDashboard = () => {
                 setNewAgent({
                   name: '',
                   email: '',
-                  role: 'support_executive'
+                  role: 'support_agent'
                 });
                 setShowAddAgent(true);
               }}
@@ -2281,7 +2281,7 @@ const BusinessDashboard = () => {
                       setNewAgent({
                         name: '',
                         email: '',
-                        role: 'support_executive',
+                        role: 'support_agent',
                         manager_id: '',
                         department: ''
                       });
@@ -2351,18 +2351,18 @@ const BusinessDashboard = () => {
                     <div className="agent-form-group">
                       <label>Role</label>
                       <select
-                        value={newAgent.role || 'support_executive'}
+                        value={newAgent.role || 'support_agent'}
                         onChange={(e) => setNewAgent({...newAgent, role: e.target.value})}
                         className="form-select"
                       >
-                        <option value="support_executive">Support Executive</option>
+                        <option value="support_agent">Support Executive</option>
                         <option value="support_manager">Support Manager</option>
                         <option value="ceo">CEO</option>
                       </select>
                     </div>
                   </div>
 
-                  {newAgent.role === 'support_executive' && (
+                  {newAgent.role === 'support_agent' && (
                     <div className="agent-form-row">
                       <div className="agent-form-group">
                         <label>Assign to Manager</label>
@@ -2410,7 +2410,7 @@ const BusinessDashboard = () => {
                         setNewAgent({
                           name: '',
                           email: '',
-                          role: 'support_executive',
+                          role: 'support_agent',
                           manager_id: ''
                         });
                         setShowAddAgent(false);

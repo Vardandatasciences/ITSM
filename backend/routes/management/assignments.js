@@ -206,7 +206,7 @@ router.get('/workload', authenticateToken, verifyTenantAccess, authorizeRole(['s
 });
 
 // POST /api/assignments/assign - Assign a ticket to an agent
-router.post('/assign', authenticateToken, verifyTenantAccess, authorizeRole(['support_manager', 'ceo', 'support_executive']), async (req, res) => {
+router.post('/assign', authenticateToken, verifyTenantAccess, authorizeRole(['support_manager', 'ceo', 'support_agent']), async (req, res) => {
   const connection = await pool.getConnection();
   
   try {

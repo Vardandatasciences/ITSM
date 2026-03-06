@@ -338,7 +338,7 @@ router.get('/:id/stats', authenticateToken, async (req, res) => {
       `SELECT 
         COUNT(*) as total_users,
         SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END) as customers,
-        SUM(CASE WHEN role IN ('support_executive', 'support_manager', 'ceo') THEN 1 ELSE 0 END) as staff
+        SUM(CASE WHEN role IN ('support_agent', 'support_manager', 'ceo') THEN 1 ELSE 0 END) as staff
       FROM users WHERE tenant_id = ?`,
       [id]
     );

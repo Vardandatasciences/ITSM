@@ -460,9 +460,13 @@ const UserForm = ({ user, onSubmit, onClose }) => {
     console.log('🎯 Auto-login product state:', autoLoginProduct);
   }, [formData, products, autoLoginProduct]);
 
-  // Helper function to create auto-login URL
-  const createAutoLoginUrl = (email, product, phone) => {
-    return `${window.location.origin}/auto-login/${encodeURIComponent(email)}/${encodeURIComponent(product)}/${encodeURIComponent(phone)}`;
+  // Helper: Generate Universal Support URL for external integrations
+  // Optional: name, phone for form auto-fill when external app provides them
+  const createSupportUrl = (email, product, name, phone) => {
+    const params = new URLSearchParams({ user_email: email });
+    if (name) params.set('user_name', name);
+    if (phone) params.set('user_phone', phone);
+    return `${window.location.origin}/${encodeURIComponent(product)}?${params.toString()}`;
   };
 
   // Check for URL parameters as fallback (auto-login context is handled in the product loading useEffect)
@@ -573,6 +577,16 @@ const UserForm = ({ user, onSubmit, onClose }) => {
       formDataToSend.append('issueTitle', formData.issueTitle);
       if (user && user.id) {
         formDataToSend.append('userId', user.id);
+      }
+      // Pass utm_description when from support URL (UTM-based tracking)
+      const autoLoginContext = localStorage.getItem('autoLoginContext');
+      if (autoLoginContext) {
+        try {
+          const ctx = JSON.parse(autoLoginContext);
+          if (ctx.utmDescription && ctx.source === 'support-url') {
+            formDataToSend.append('utm_description', ctx.utmDescription);
+          }
+        } catch (_) {}
       }
       
       // Add attachment if selected
@@ -808,7 +822,7 @@ const UserForm = ({ user, onSubmit, onClose }) => {
                  <div style={{ fontWeight: '600', fontSize: '16px', color: '#495057', marginBottom: '12px' }}>Quick Test</div>
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                    <a 
-                     href={createAutoLoginUrl('test@example.com', 'GRC', '9876543210')}
+                     href={createSupportUrl('test@example.com', 'GRC')}
                      target="_blank"
                      rel="noopener noreferrer"
                      style={{ 

@@ -40,7 +40,7 @@ users table:
 
 -- Staff (Full Access)  
 agents table:
-├── role: 'support_executive' | 'support_manager' | 'ceo'
+├── role: 'support_agent' | 'support_manager' | 'ceo'
 ├── Access: System-wide access
 └── Features: Manage tickets, analytics, admin functions
 ```
@@ -103,8 +103,8 @@ if (userType === 'user') {
 ### **Support Executive (agents table)**
 
 #### **Role Definition**
-- **Database Role**: `'agent'` or `'support_executive'`
-- **Frontend Role**: `'support_executive'`
+- **Database Role**: `'agent'` or `'support_agent'`
+- **Frontend Role**: `'support_agent'`
 - **Access Level**: Agent-level
 - **Dashboard**: `/agentdashboard`
 
@@ -136,7 +136,7 @@ const agentCapabilities = {
 // Database role → Frontend role mapping
 if (userType === 'agent') {
   if (user.role === 'agent' || !user.role) {
-    mappedRole = 'support_executive';  // Default agent role
+    mappedRole = 'support_agent';  // Default agent role
   } else if (user.role === 'manager') {
     mappedRole = 'support_manager';   // Manager role
   }
@@ -307,7 +307,7 @@ const mapRoleForFrontend = (user, userType) => {
   if (userType === 'agent') {
     // Map agent roles to frontend-expected roles
     if (user.role === 'agent' || !user.role) {
-      mappedRole = 'support_executive';  // Default agent role
+      mappedRole = 'support_agent';  // Default agent role
     } else if (user.role === 'manager') {
       mappedRole = 'support_manager';    // Manager role
     }
@@ -318,7 +318,7 @@ const mapRoleForFrontend = (user, userType) => {
 };
 
 const determineDashboardType = (mappedRole) => {
-  if (['support_executive', 'support_manager', 'ceo', 'admin'].includes(mappedRole)) {
+  if (['support_agent', 'support_manager', 'ceo', 'admin'].includes(mappedRole)) {
     return 'staff';
   }
   return 'user';
@@ -338,7 +338,7 @@ const ProtectedRoute = ({ children }) => {
   
   // Check if user is staff member
   const isStaffMember = user.role && 
-    ['support_executive', 'support_manager', 'ceo', 'admin'].includes(user.role);
+    ['support_agent', 'support_manager', 'ceo', 'admin'].includes(user.role);
   
   if (!isStaffMember) {
     return <Navigate to="/login" replace />;
@@ -368,7 +368,7 @@ const ProtectedRoute = ({ children }) => {
 
 // Staff routes (protected)
 <Route path="/agentdashboard" element={
-  <ProtectedRoute requiredRole="support_executive">
+  <ProtectedRoute requiredRole="support_agent">
     <AgentDashboard />
   </ProtectedRoute>
 } />
@@ -440,7 +440,7 @@ const authorizeRole = (roles) => {
 // Agent-only endpoints
 router.get('/tickets/assigned', 
   authenticateToken, 
-  authorizeRole(['support_executive']), 
+  authorizeRole(['support_agent']), 
   getAssignedTickets
 );
 

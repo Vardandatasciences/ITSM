@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAuthHeaders, authenticatedFetch } from '../../utils/api';
+import { getAuthHeaders } from '../../utils/api';
 import './ManagerDashboard.css';
-import SLATimer from '../sla/SLATimer';
-import TicketCard from '../tickets/TicketCard';
 
 const ManagerDashboard = ({ manager }) => {
   const navigate = useNavigate();
@@ -30,8 +28,6 @@ const ManagerDashboard = ({ manager }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [activeTab, setActiveTab] = useState('overview');
-  const [openMediaId, setOpenMediaId] = useState(null);
-  const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketReplies, setTicketReplies] = useState({});
   
   // Escalated ticket detail view state
@@ -51,7 +47,7 @@ const ManagerDashboard = ({ manager }) => {
   
   // New agent assignment notification state
   const [showNewAgentNotification, setShowNewAgentNotification] = useState(false);
-  const [newAgentCount, setNewAgentCount] = useState(0);
+  const [, setNewAgentCount] = useState(0);
   
   const [performanceMetrics, setPerformanceMetrics] = useState({
     totalTickets: 0,
@@ -267,7 +263,7 @@ const ManagerDashboard = ({ manager }) => {
     // Filter for support executives - using actual roles from the system
     const supportExecutives = teamMembersData.filter(member => 
       member.role === 'agent' ||  // Support executives have 'agent' role in this system
-      member.role === 'support_executive' || 
+      member.role === 'support_agent' || 
       member.role === 'Support Executive'
     );
 
@@ -307,6 +303,7 @@ const ManagerDashboard = ({ manager }) => {
   useEffect(() => {
     fetchData();
     fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
   }, []);
 
   // Fetch ticket replies when tickets are loaded
@@ -316,6 +313,7 @@ const ManagerDashboard = ({ manager }) => {
         fetchTicketReplies(ticket.id);
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTicketReplies is stable
   }, [tickets]);
 
   // Refresh data when analytics tab is selected
@@ -323,6 +321,7 @@ const ManagerDashboard = ({ manager }) => {
     if (activeTab === 'analytics') {
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchData is stable
   }, [activeTab]);
 
   // Recalculate metrics whenever tickets change
@@ -337,6 +336,7 @@ const ManagerDashboard = ({ manager }) => {
     } else {
       console.log('❌ useEffect conditions not met');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recalculateMetrics is stable
   }, [tickets, teamMembers]);
 
   const formatDate = (dateString) => {
@@ -347,66 +347,6 @@ const ManagerDashboard = ({ manager }) => {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
-
-  const handleResolveTicket = async (ticketId) => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/tickets/${ticketId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'closed' })
-      });
-
-      if (response.ok) {
-        setTickets(prev => prev.map(ticket =>
-          ticket.id === ticketId ? { ...ticket, status: 'closed' } : ticket
-        ));
-        console.log('✅ Ticket resolved successfully');
-        
-        // Recalculate performance metrics after status change
-        setTimeout(() => {
-          calculatePerformanceMetrics(tickets, teamMembers);
-        }, 100);
-      }
-    } catch (error) {
-      console.error('Error resolving ticket:', error);
-    }
-  };
-
-  // Handle status change for centralized ticket component
-  const handleStatusChange = async (ticketId, newStatus) => {
-    try {
-      const token = localStorage.getItem('userToken') || localStorage.getItem('access_token');
-      
-      const headers = {
-        'Content-Type': 'application/json'
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      
-      const response = await fetch(`http://localhost:5000/api/tickets/${ticketId}/status`, {
-        method: 'PUT',
-        headers: headers,
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (response.ok) {
-        setTickets(prev => prev.map(ticket =>
-          ticket.id === ticketId ? { ...ticket, status: newStatus } : ticket
-        ));
-        console.log(`✅ Ticket status changed to ${newStatus} successfully`);
-        // Refresh data to show updated status
-        fetchData();
-      } else {
-        console.error(` Failed to change ticket status to ${newStatus}:`, response.status);
-      }
-    } catch (error) {
-      console.error(' Error changing ticket status:', error);
-    }
   };
 
   // Reply functionality
@@ -536,12 +476,6 @@ const ManagerDashboard = ({ manager }) => {
     return filteredTickets;
   };
 
-  // Function to open ticket in new window
-  const openTicketWindow = (ticket) => {
-    const ticketUrl = `/ticket/${ticket.id}`;
-    window.open(ticketUrl, '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
-  };
-
   // Function to handle escalated ticket view
   const handleEscalatedTicketView = (ticket) => {
     setSelectedEscalatedTicket(ticket);
@@ -638,28 +572,6 @@ const ManagerDashboard = ({ manager }) => {
     } catch (error) {
       console.error('❌ Error fetching ticket replies:', error);
     }
-  };
-
-  const hasCustomerReplies = (ticketId) => {
-    const replies = ticketReplies[ticketId] || [];
-    return replies.some(reply => reply.sender_type === 'customer');
-  };
-
-  const getCustomerReplyCount = (ticketId) => {
-    const replies = ticketReplies[ticketId] || [];
-    return replies.filter(reply => reply.sender_type === 'customer').length;
-  };
-
-  const getLatestCustomerReplyTime = (ticketId) => {
-    const replies = ticketReplies[ticketId] || [];
-    const customerReplies = replies.filter(reply => reply.sender_type === 'customer');
-    if (customerReplies.length === 0) return null;
-    
-    const latestReply = customerReplies.reduce((latest, current) => 
-      new Date(current.created_at) > new Date(latest.created_at) ? current : latest
-    );
-    
-    return new Date(latestReply.created_at);
   };
 
   const tabList = [

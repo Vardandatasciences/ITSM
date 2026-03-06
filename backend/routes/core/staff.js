@@ -49,7 +49,7 @@ router.post('/login', [
     const tenantId = req.tenantId || 1;
     const [staffMembers] = await pool.execute(
       'SELECT * FROM agents WHERE (email = ? OR login_id = ? OR name = ?) AND role IN (?, ?, ?) AND tenant_id = ?',
-      [login_id, login_id, login_id, 'support_executive', 'support_manager', 'ceo', tenantId]
+      [login_id, login_id, login_id, 'support_agent', 'support_manager', 'ceo', tenantId]
     );
     
     console.log('🔍 Found staff members:', staffMembers.length);
@@ -148,7 +148,7 @@ router.get('/profile', async (req, res) => {
 
     const [staffMembers] = await pool.execute(
       'SELECT id, name, email, role, department, manager_id, is_active, created_at, last_login FROM users WHERE id = ? AND role IN (?, ?, ?)',
-      [id, 'support_executive', 'support_manager', 'ceo']
+      [id, 'support_agent', 'support_manager', 'ceo']
     );
 
     if (staffMembers.length === 0) {

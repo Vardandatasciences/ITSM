@@ -18,7 +18,7 @@ async function assignTicketsToAgents() {
     console.log('✅ Connected to database');
     
     // Get all active agents
-    const [agents] = await connection.execute('SELECT id, name, role FROM agents WHERE is_active = TRUE AND role = "support_executive"');
+    const [agents] = await connection.execute('SELECT id, name, role FROM agents WHERE is_active = TRUE AND role = "support_agent"');
     console.log(`Found ${agents.length} support executives`);
     
     if (agents.length === 0) {

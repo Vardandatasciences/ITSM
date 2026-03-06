@@ -4,7 +4,7 @@ const { pool } = require('../database');
 
 // Permission matrix for the 3 main roles
 const permissions = {
-  support_executive: [
+  support_agent: [
     'view_assigned_tickets',
     'reply_to_tickets',
     'update_ticket_status',
@@ -79,10 +79,10 @@ const authenticateToken = async (req, res, next) => {
         agentId: agent.id,
         email: agent.email,
         name: agent.name,
-        role: agent.role || 'support_executive',
-        tenant_id: agent.tenant_id, // ✅ Add tenant_id
+        role: agent.role || 'support_agent',
+        tenant_id: agent.tenant_id,
         department: 'IT Support',
-        permissions: permissions[agent.role] || permissions['support_executive'] || []
+        permissions: permissions[agent.role] || permissions['support_agent'] || []
       };
     } else {
       // Agent not found, try users table (for customers)
@@ -191,8 +191,8 @@ const canAccessTicket = async (req, res, next) => {
 
     const ticket = tickets[0];
     
-    // Handle role mapping: support_executive in agents table maps to 'user' in users table
-    const isSupportExecutive = req.user.role === 'support_executive' || 
+    // Handle role mapping: support_agent in agents table maps to 'user' in users table
+    const isSupportExecutive = req.user.role === 'support_agent' || 
                               (req.user.role === 'user' && req.user.agentId); // Check if user has agentId (indicating they're a support executive)
     
     const canAccess = 

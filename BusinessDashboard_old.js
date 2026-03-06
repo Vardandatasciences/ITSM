@@ -26,7 +26,7 @@ const BusinessDashboard = () => {
   const [newAgent, setNewAgent] = useState({
     name: '',
     email: '',
-    role: 'support_executive'
+    role: 'support_agent'
   });
 
   // New state for SLA management
@@ -131,7 +131,7 @@ const BusinessDashboard = () => {
       const agentData = {
         name: newAgent.name.trim(),
         email: newAgent.email.trim(),
-        role: newAgent.role || 'support_executive'
+        role: newAgent.role || 'support_agent'
       };
       
       console.log('📤 Sending agent data:', agentData);
@@ -154,7 +154,7 @@ const BusinessDashboard = () => {
         setNewAgent({
           name: '',
           email: '',
-          role: 'support_executive'
+          role: 'support_agent'
         });
         fetchAgents(); // Refresh the agents list
         
@@ -1560,7 +1560,7 @@ Type "DELETE" to confirm:`;
                 setNewAgent({
                   name: '',
                   email: '',
-                  role: 'support_executive'
+                  role: 'support_agent'
                 });
                 setShowAddAgent(true);
               }}
@@ -1611,11 +1611,11 @@ Type "DELETE" to confirm:`;
                 <div className="form-group">
                   <label>Role</label>
                   <select
-                    value={newAgent.role || 'support_executive'}
+                    value={newAgent.role || 'support_agent'}
                     onChange={(e) => setNewAgent({...newAgent, role: e.target.value})}
                     className="form-select"
                   >
-                    <option value="support_executive">Support Executive</option>
+                    <option value="support_agent">Support Executive</option>
                     <option value="support_manager">Support Manager</option>
                     <option value="ceo">CEO</option>
                   </select>
@@ -1633,7 +1633,7 @@ Type "DELETE" to confirm:`;
                       setNewAgent({
                         name: '',
                         email: '',
-                        role: 'support_executive'
+                        role: 'support_agent'
                       });
                       setShowAddAgent(false);
                     }}

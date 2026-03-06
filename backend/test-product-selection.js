@@ -9,7 +9,7 @@ async function testProductSelection() {
     // Test 1: Fetch products from database
     console.log('📋 Test 1: Fetching products from database...');
     const [products] = await pool.execute(
-      'SELECT id, name, description, sla_time_minutes, priority_level FROM products WHERE status = "active" ORDER BY name ASC'
+      'SELECT id, name, description, sla_time_minutes, priority_level FROM products WHERE status = \'active\' ORDER BY name ASC'
     );
     
     console.log(`✅ Found ${products.length} active products:`);

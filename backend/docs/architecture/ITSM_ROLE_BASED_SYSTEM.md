@@ -47,7 +47,7 @@ A comprehensive customer support platform with role-based access control, design
 - **WhatsApp**: Full conversation flow
 
 ### **2. Support Executive**
-**Role ID**: `support_executive`
+**Role ID**: `support_agent`
 **Description**: Frontline support staff who handle customer tickets
 
 #### **Permissions:**
@@ -193,7 +193,7 @@ CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(100) NOT NULL UNIQUE,
   name VARCHAR(100) NOT NULL,
-  role ENUM('user', 'support_executive', 'support_manager', 'ceo', 'admin') DEFAULT 'user',
+  role ENUM('user', 'support_agent', 'support_manager', 'ceo', 'admin') DEFAULT 'user',
   department VARCHAR(30),
   manager_id INT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -395,7 +395,7 @@ const permissions = {
     'rate_support',
     'whatsapp_chat'
   ],
-  support_executive: [
+  support_agent: [
     'view_assigned_tickets',
     'reply_to_tickets',
     'update_ticket_status',

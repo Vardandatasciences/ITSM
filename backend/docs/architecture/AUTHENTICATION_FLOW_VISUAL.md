@@ -66,7 +66,7 @@
 │                 │ • rate_support                                         │
 │                 │ • whatsapp_chat                                        │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
-│support_executive│ • view_assigned_tickets                                │
+│support_agent│ • view_assigned_tickets                                │
 │                 │ • reply_to_tickets                                     │
 │                 │ • update_ticket_status                                 │
 │                 │ • send_whatsapp_notifications                          │
@@ -110,7 +110,7 @@
 │ {                                                                         │
 │   "userId": "123",                                                        │
 │   "email": "user@example.com",                                           │
-│   "role": "support_executive",                                            │
+│   "role": "support_agent",                                            │
 │   "department": "IT",                                                     │
 │   "managerId": "456"                                                      │
 │ }                                                                         │

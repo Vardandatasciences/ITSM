@@ -1,13 +1,35 @@
 const { pool } = require('./database');
 
+// Retry helper for connection errors (e.g. Aiven MySQL closes idle connections)
+const CONN_ERROR_CODES = ['ECONNRESET', 'ETIMEDOUT', 'EPIPE', 'ECONNREFUSED', 'PROTOCOL_CONNECTION_LOST'];
+const withRetry = async (fn, maxAttempts = 3) => {
+  let lastErr;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const isConnError = CONN_ERROR_CODES.includes(err?.code) || err?.message?.includes('ECONNRESET');
+      if (isConnError && attempt < maxAttempts) {
+        console.warn(`⚠️ DB connection error (attempt ${attempt}/${maxAttempts}): ${err?.message || err}`);
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw lastErr;
+};
+
 // Auto-escalation function
 async function autoEscalateBreachedTickets() {
   try {
+    await withRetry(async () => {
     console.log(`🕐 [${new Date().toLocaleString()}] Checking for breached tickets...`);
     const now = new Date();
     
     // Get all tenants
-    const [tenants] = await pool.execute('SELECT id, name FROM tenants WHERE status = "active"');
+    const [tenants] = await pool.execute('SELECT id, name FROM tenants WHERE status = \'active\'');
     
     if (tenants.length === 0) {
       console.log('✅ No active tenants found');
@@ -100,6 +122,16 @@ async function autoEscalateBreachedTickets() {
         
         escalatedCount++;
         
+        // Send WhatsApp notification to customer
+        if (ticket.mobile) {
+          try {
+            const { sendEscalationNotification } = require('./utils/whatsapp-notifications');
+            await sendEscalationNotification(ticket, 'SLA response time exceeded');
+          } catch (err) {
+            console.warn(`⚠️ WhatsApp escalation notification failed for ticket ${ticket.id}:`, err?.message);
+          }
+        }
+        
         // Log escalation details
         console.log(`🚨 Auto-escalated ticket ${ticket.id}:`);
         console.log(`   - Product: ${ticket.product_name || ticket.product || 'Unknown'}`);
@@ -129,6 +161,7 @@ async function autoEscalateBreachedTickets() {
     
     console.log(`\n✅ Auto-escalation completed for all tenants: ${totalEscalated} tickets escalated out of ${totalBreached} breached`);
 
+    });
   } catch (error) {
     console.error('❌ Error in auto-escalation:', error);
   }

@@ -26,7 +26,7 @@ async function testAgentsTable() {
       name: 'Test Agent',
       email: 'test@example.com',
       password: 'test123456',
-      role: 'support_executive',
+      role: 'support_agent',
       department: null,
       manager_id: null
     };

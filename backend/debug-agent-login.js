@@ -14,7 +14,7 @@ async function debugAgentLogin() {
     agents.forEach(agent => {
       console.log(`\n👤 ${agent.name} (ID: ${agent.id})`);
       console.log(`   📧 Email: ${agent.email || 'N/A'}`);
-      console.log(`   🎭 Role: ${agent.role || 'support_executive'}`);
+      console.log(`   🎭 Role: ${agent.role || 'support_agent'}`);
       console.log(`   ✅ Active: ${agent.is_active ? 'Yes' : 'No'}`);
       console.log(`   🔐 Password Hash: ${agent.password_hash ? agent.password_hash.substring(0, 20) + '...' : 'NULL'}`);
     });

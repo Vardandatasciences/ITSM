@@ -186,13 +186,13 @@ async function getProductsForWhatsApp(tenantId = null) {
   try {
     if (tenantId) {
       const [products] = await pool.execute(
-        'SELECT id, name, description, sla_time_minutes, priority_level FROM products WHERE status = "active" AND tenant_id = ? ORDER BY name ASC',
+        'SELECT id, name, description, sla_time_minutes, priority_level FROM products WHERE status = \'active\' AND tenant_id = ? ORDER BY name ASC',
         [tenantId]
       );
       return products;
     } else {
       const [products] = await pool.execute(
-        'SELECT id, name, description, sla_time_minutes, priority_level FROM products WHERE status = "active" ORDER BY name ASC'
+        'SELECT id, name, description, sla_time_minutes, priority_level FROM products WHERE status = \'active\' ORDER BY name ASC'
       );
       return products;
     }
@@ -692,8 +692,15 @@ async function createTicketFromWhatsApp(phoneNumber, ticketData, tenantId = 1) {
       ]
     );
 
-    console.log(`✅ Ticket created from WhatsApp: #${result.insertId}`);
-    return result.insertId;
+    const ticketId = result.insertId;
+    console.log(`✅ Ticket created from WhatsApp: #${ticketId}`);
+    try {
+      const TicketAssignmentService = require('../utils/ticketAssignment');
+      await TicketAssignmentService.assignTicketEqually(ticketId, null, tenantId);
+    } catch (err) {
+      console.warn(`⚠️ Auto-assignment failed for WhatsApp ticket #${ticketId}:`, err.message);
+    }
+    return ticketId;
   } catch (error) {
     console.error('❌ Error creating ticket from WhatsApp:', error);
     return null;

@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import UserForm from '../tickets/UserForm';
+import { buildApiUrl, getAuthHeaders } from '../../utils/api';
 import './UserDashboard.css';
 
-const UserDashboard = ({ user }) => {
+const UserDashboard = ({ user, isFirstTimeSupportUser = false, initialShowForm = false }) => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(initialShowForm);
   const [replies, setReplies] = useState({});
   const [error, setError] = useState(null);
+  const failedReplyTicketIdsRef = React.useRef(new Set());
   const [notification, setNotification] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [stats, setStats] = useState({
@@ -193,23 +195,19 @@ const UserDashboard = ({ user }) => {
     }
   }, [currentUser]);
 
-  // Real-time refresh for new replies
+  // Optional: refresh replies every 2 minutes (reduced from 30s to avoid continuous requests)
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !tickets?.length) return;
 
-    // Set up interval to check for new replies every 30 seconds
     const intervalId = setInterval(() => {
-      if (tickets && tickets.length > 0) {
-        const validTickets = tickets.filter(ticket => ticket && ticket.id);
-        validTickets.forEach(ticket => {
-          if (ticket && ticket.id) {
-            fetchReplies(ticket.id);
-          }
-        });
-      }
-    }, 30000); // 30 seconds
+      const validTickets = tickets.filter(ticket => ticket && ticket.id);
+      validTickets.forEach(ticket => {
+        if (ticket?.id && !failedReplyTicketIdsRef.current.has(ticket.id)) {
+          fetchReplies(ticket.id);
+        }
+      });
+    }, 120000); // 2 minutes
 
-    // Cleanup interval on unmount
     return () => clearInterval(intervalId);
   }, [currentUser, tickets]);
 
@@ -219,12 +217,16 @@ const UserDashboard = ({ user }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/tickets/user/${currentUser.id}`);
+      const userId = typeof currentUser.id === 'string' ? parseInt(currentUser.id, 10) : currentUser.id;
+      const res = await fetch(buildApiUrl(`/api/tickets/user/${userId}`), {
+        headers: getAuthHeaders()
+      });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         // Filter out invalid tickets before setting state
         const validTickets = data.data.filter(ticket => ticket && ticket.id);
         setTickets(validTickets);
+        failedReplyTicketIdsRef.current.clear(); // Reset failed set when tickets reload
         
         // Fetch replies for each valid ticket
         validTickets.forEach(ticket => {
@@ -251,49 +253,39 @@ const UserDashboard = ({ user }) => {
 
   const fetchReplies = async (ticketId) => {
     if (!ticketId) return;
+    if (failedReplyTicketIdsRef.current.has(ticketId)) return; // Skip tickets that repeatedly fail
     
     try {
-      // Use the chat API instead of the old replies API
-      const res = await fetch(`http://localhost:5000/api/chat/messages/${ticketId}`);
+      const res = await fetch(buildApiUrl(`/api/chat/messages/${ticketId}`), {
+        headers: getAuthHeaders()
+      });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
-        const previousReplies = replies[ticketId] || [];
-        const newReplies = data.data.filter(reply => reply && reply.id); // Filter valid replies
-        
-        // Sort replies by timestamp (newest first) - default sorting
+        failedReplyTicketIdsRef.current.delete(ticketId);
+        const newReplies = data.data.filter(reply => reply && reply.id);
         const sortedReplies = newReplies.sort((a, b) => {
           const dateA = new Date(a.created_at || a.timestamp || 0);
           const dateB = new Date(b.created_at || b.timestamp || 0);
-          
-          // Check if dates are valid
-          if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
-            return 0;
-          }
-          
+          if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
           return dateB - dateA;
         });
-        
-        // Check if there are new agent replies
-        const newAgentReplies = sortedReplies.filter(newReply => 
-          newReply && newReply.sender_type === 'agent' && 
-          !previousReplies.some(prevReply => 
-            prevReply && prevReply.id === newReply.id
-          )
-        );
-        
-        // Removed notification for new agent replies
-        
         setReplies(prev => ({ ...prev, [ticketId]: sortedReplies }));
+      } else if (res.status === 404) {
+        failedReplyTicketIdsRef.current.add(ticketId);
+        setReplies(prev => ({ ...prev, [ticketId]: [] }));
       }
     } catch (error) {
-      console.error('Error fetching replies:', error);
+      failedReplyTicketIdsRef.current.add(ticketId);
+      setReplies(prev => ({ ...prev, [ticketId]: [] }));
     }
   };
 
   // Fetch SLA configurations for timer calculations
   const fetchSLAConfigurations = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/sla/configurations');
+      const response = await fetch(buildApiUrl('/api/sla/configurations'), {
+        headers: getAuthHeaders()
+      });
       if (response.ok) {
         const result = await response.json();
         if (result.success && Array.isArray(result.data)) {
@@ -374,12 +366,9 @@ const UserDashboard = ({ user }) => {
     if (!currentUser || !currentUser.id) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/tickets/${ticketId}/close`, {
+      const res = await fetch(buildApiUrl(`/api/tickets/${ticketId}/close`), {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        }
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }
       });
       const data = await res.json();
 
@@ -729,13 +718,20 @@ const UserDashboard = ({ user }) => {
     );
   }
 
+  const displayName = currentUser?.name || currentUser?.email?.split('@')[0] || 'Customer';
+  const hasNoTickets = !loading && tickets.length === 0;
+
   return (
     <div className="user-dashboard-container">
       {/* Header Section */}
       <div className="dashboard-header">
         <div className="welcome-section">
-          <h1 className="welcome-title">Welcome back, {currentUser?.name || currentUser?.email?.split('@')[0] || 'Customer'}! 👋</h1>
-          <p className="welcome-subtitle">Here's your personalized ticket overview</p>
+          <h1 className="welcome-title">Welcome{hasNoTickets && isFirstTimeSupportUser ? '' : ' back'}, {displayName}! 👋</h1>
+          <p className="welcome-subtitle">
+            {hasNoTickets && isFirstTimeSupportUser
+              ? "You have no tickets yet. Create a ticket below to raise an issue or get support."
+              : "Here's your personalized ticket overview"}
+          </p>
         </div>
         <div className="user-info">
           <div className="user-avatar">
@@ -800,10 +796,10 @@ const UserDashboard = ({ user }) => {
       <div className="action-section">
         <div className="action-buttons">
           <button 
-            className="submit-ticket-btn" 
+            className="submit-ticket-btn"
             onClick={() => setShowForm(!showForm)}
           >
-            New Ticket
+            {hasNoTickets && isFirstTimeSupportUser ? 'Create Your First Ticket' : 'New Ticket'}
           </button>
         </div>
       </div>
@@ -830,7 +826,7 @@ const UserDashboard = ({ user }) => {
       {/* Tickets Section - Table Structure */}
       <div className="tickets-section">
         <div className="section-subtitle">
-          {tickets.length > 0 && (
+          {tickets.length > 0 ? (
             <>
               {`${tickets.length} ticket${tickets.length !== 1 ? 's' : ''} found`}
               <span className="current-sort-info">
@@ -842,6 +838,8 @@ const UserDashboard = ({ user }) => {
                 ({sortConfig.direction === 'asc' ? 'A→Z' : 'Z→A'})
               </span>
             </>
+          ) : (
+            !loading && '0 tickets found'
           )}
         </div>
 
@@ -863,7 +861,12 @@ const UserDashboard = ({ user }) => {
           <div className="empty-state">
             <div className="empty-icon">📝</div>
             <h3>No tickets yet</h3>
-            <p>Submit your first ticket to get started!</p>
+            <p>{isFirstTimeSupportUser ? 'Create a ticket above to raise an issue or get support.' : 'Submit your first ticket to get started!'}</p>
+            {!showForm && (
+              <button className="submit-ticket-btn" onClick={() => setShowForm(true)} style={{ marginTop: '16px' }}>
+                {isFirstTimeSupportUser ? 'Create Ticket' : 'New Ticket'}
+              </button>
+            )}
           </div>
         ) : (
           <>

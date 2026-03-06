@@ -43,6 +43,11 @@ export const getAuthHeaders = () => {
     }
   }
   
+  // Fallback to tenant 1 for single-tenant setups (e.g. IMAP-created tickets use tenant_id=1)
+  if (!tenantId) {
+    tenantId = 1;
+  }
+  
   const headers = {
     'Content-Type': 'application/json'
   };
@@ -56,6 +61,42 @@ export const getAuthHeaders = () => {
   }
   
   return headers;
+};
+
+/**
+ * Get the current tenant ID for the logged-in user
+ * Used by WebSocket and other non-HTTP contexts that need tenant context
+ *
+ * @returns {number} Tenant ID (defaults to 1)
+ */
+export const getTenantId = () => {
+  const userData = localStorage.getItem('userData') ||
+    localStorage.getItem('tickUser') ||
+    localStorage.getItem('agentData');
+
+  if (userData) {
+    try {
+      const user = JSON.parse(userData);
+      if (user?.tenant_id != null) return Number(user.tenant_id);
+    } catch (e) {
+      console.error('Error parsing user data:', e);
+    }
+  }
+
+  const token = localStorage.getItem('userToken') ||
+    localStorage.getItem('access_token') ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('agentToken');
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.tenant_id != null) return Number(payload.tenant_id);
+    } catch (e) {
+      console.warn('Could not extract tenant_id from token:', e);
+    }
+  }
+
+  return 1;
 };
 
 /**
@@ -92,6 +133,11 @@ export const getAuthHeadersFormData = () => {
     } catch (e) {
       console.warn('Could not extract tenant_id from token:', e);
     }
+  }
+  
+  // Fallback to tenant 1 for single-tenant setups
+  if (!tenantId) {
+    tenantId = 1;
   }
   
   const headers = {};

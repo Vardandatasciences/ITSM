@@ -26,7 +26,7 @@ const BusinessDashboard = () => {
   const [newAgent, setNewAgent] = useState({
     name: '',
     email: '',
-    role: 'support_executive'
+    role: 'support_agent'
   });
 
   // New state for SLA management
@@ -95,10 +95,10 @@ const BusinessDashboard = () => {
 
 
 
-  // Fetch agents (only support_executive role)
+  // Fetch agents (only support_agent role)
   const fetchAgents = async () => {
     try {
-      const agentsRes = await fetch(`${API_BASE}/agents?role=support_executive`);
+      const agentsRes = await fetch(`${API_BASE}/agents?role=support_agent`);
       const agentsJson = await agentsRes.json();
 
       const agents = agentsJson.success ? agentsJson.data : [];
@@ -154,7 +154,7 @@ const BusinessDashboard = () => {
         setNewAgent({
           name: '',
           email: '',
-          role: 'support_executive'
+          role: 'support_agent'
         });
         fetchAgents(); // Refresh the agents list
         

@@ -25,7 +25,7 @@ const createTestAgent = async () => {
     const [result] = await connection.execute(
       `INSERT INTO agents (name, email, password_hash, role, is_active) 
        VALUES (?, ?, ?, ?, ?)`,
-      ['admin', 'admin@example.com', hashedPassword, 'support_executive', true]
+      ['admin', 'admin@example.com', hashedPassword, 'support_agent', true]
     );
 
     console.log('✅ Test agent created successfully');

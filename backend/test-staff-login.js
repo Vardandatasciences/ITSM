@@ -10,7 +10,7 @@ async function testStaffLogin() {
     // Check current users with staff roles
     const [staffMembers] = await connection.execute(
       'SELECT id, name, email, role, is_active, last_login FROM users WHERE role IN (?, ?, ?)',
-      ['support_executive', 'support_manager', 'ceo']
+      ['support_agent', 'support_manager', 'ceo']
     );
     console.log(`\n📝 Found ${staffMembers.length} staff members in database:`);
     
@@ -48,7 +48,7 @@ async function testStaffLogin() {
     console.log('\n🔐 Login Credentials Test:');
     console.log('• Staff can login with login_id (stored in email field)');
     console.log('• Password must match the password_hash in database');
-    console.log('• Only users with roles: support_executive, support_manager, ceo can login');
+    console.log('• Only users with roles: support_agent, support_manager, ceo can login');
     
     console.log('\n🌐 Test the login endpoint:');
     console.log('POST http://localhost:5000/api/staff/login');

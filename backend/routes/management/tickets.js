@@ -7,6 +7,7 @@ const { setTenantContext, verifyTenantAccess } = require('../middleware/tenant')
 const axios = require('axios');
 const TextFormatter = require('../utils/textFormatter');
 const TicketAssignmentService = require('../utils/ticketAssignment');
+const emailService = require('../services/emailService');
 
 // Apply tenant context to all routes
 const router = express.Router();
@@ -304,11 +305,11 @@ router.get('/', authenticateToken, verifyTenantAccess, async (req, res) => {
       conditions.push('t.user_id = ?');
       params.push(user.userId || user.id);
       console.log('🔍 Filtering for customer - user_id =', user.userId || user.id);
-    } else if (user.role === 'support_executive') {
+    } else if (user.role === 'support_agent') {
       // Support executives can see tickets assigned to them
       conditions.push('t.assigned_to = ?');
       params.push(user.userId || user.id);
-      console.log('🔍 Filtering for support_executive - assigned_to =', user.userId || user.id);
+      console.log('🔍 Filtering for support_agent - assigned_to =', user.userId || user.id);
     } else if (user.role === 'support_manager' || user.role === 'manager') {
       // Managers can see tickets from their department
       // For now, show all tickets (can be enhanced with department filtering)
@@ -432,7 +433,7 @@ router.get('/:id', async (req, res) => {
       // Customers can only see their own tickets
       canAccess = (ticket.user_id == user.userId); // Use == for type comparison
       console.log('   - Customer access check:', canAccess, `(ticket.user_id: ${ticket.user_id} == user.userId: ${user.userId})`);
-    } else if (user.role === 'support_executive') {
+    } else if (user.role === 'support_agent') {
       // Support executives can see tickets assigned to them
       canAccess = (ticket.assigned_to == user.userId);
       console.log('   - Support executive access check:', canAccess);
@@ -496,7 +497,7 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
     console.log('Received ticket data:', req.body);
     
     const tenantId = req.tenantId; // ✅ Get tenant_id from request context
-    const { name, email, mobile, product, module, description, issueType, issueTypeOther, issueTitle, userId } = req.body;
+    const { name, email, mobile, product, module, description, issueType, issueTypeOther, issueTitle, userId, utm_description } = req.body;
     
     // Format all input data using universal text formatter
     const formattedData = TextFormatter.formatTicketData({
@@ -518,7 +519,7 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
     
     if (product) {
       const [products] = await pool.execute(
-        'SELECT id FROM products WHERE name = ? AND status = "active" AND tenant_id = ?',
+        'SELECT id FROM products WHERE name = ? AND status = \'active\' AND tenant_id = ?',
         [product, tenantId]
       );
       if (products.length > 0) {
@@ -528,7 +529,7 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
         // Find module_id based on module name
         if (module) {
           const [modules] = await pool.execute(
-            'SELECT id FROM modules WHERE product_id = ? AND name = ? AND status = "active" AND tenant_id = ?',
+            'SELECT id FROM modules WHERE product_id = ? AND name = ? AND status = \'active\' AND tenant_id = ?',
             [productId, module, tenantId]
           );
           if (modules.length > 0) {
@@ -568,13 +569,13 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
       fs.unlinkSync(req.file.path);
     }
     
-    // Insert ticket into database with formatted data (include tenant_id)
+    // Insert ticket into database with formatted data (include tenant_id, utm_description for support URL tracking)
     const safe = v => v === undefined ? null : v;
     const [result] = await pool.execute(
-      `INSERT INTO tickets (tenant_id, user_id, name, email, mobile, product, product_id, module, module_id, description, issue_type, issue_type_other, issue_title, attachment_name, attachment_type, attachment) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tickets (tenant_id, user_id, name, email, mobile, product, product_id, module, module_id, description, issue_type, issue_type_other, issue_title, attachment_name, attachment_type, attachment, utm_description) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        tenantId, // ✅ Add tenant_id
+        tenantId,
         safe(userId),
         safe(name),
         safe(email),
@@ -589,7 +590,8 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
         safe(issueTitle),
         safe(attachmentName),
         safe(attachmentType),
-        safe(attachmentData)
+        safe(attachmentData),
+        safe(utm_description)
       ]
     );
     
@@ -701,6 +703,31 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
       } : null
     };
 
+    // Send ticket confirmation email (fire-and-forget)
+    if (email) {
+      emailService.sendTicketConfirmation(
+        email,
+        name,
+        ticketId,
+        issueTitle || description?.substring(0, 100) || 'Support Request',
+        emailService.getAppUrl()
+      ).catch(err => console.warn('⚠️ Ticket confirmation email failed:', err?.message));
+    }
+
+    // Send WhatsApp when ticket is created (if mobile provided)
+    if (mobile) {
+      try {
+        const { sendTicketCreatedNotification } = require('../utils/whatsapp-notifications');
+        await sendTicketCreatedNotification({
+          id: ticketId,
+          mobile,
+          issue_title: issueTitle || description?.substring(0, 100) || 'Support Request'
+        });
+      } catch (err) {
+        console.warn('⚠️ WhatsApp ticket-created notification failed:', err?.message);
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: assignmentResult ? 
@@ -766,8 +793,22 @@ router.put('/:id/status', async (req, res) => {
     
     // Send WhatsApp notification for status update
     if (ticket.mobile) {
-      const { sendStatusUpdateNotification } = require('../utils/whatsapp-notifications');
-      await sendStatusUpdateNotification(ticket, status);
+      const {
+        sendStatusUpdateNotification,
+        sendEscalationNotification,
+        sendResolutionNotification
+      } = require('../utils/whatsapp-notifications');
+      try {
+        if (status === 'escalated') {
+          await sendEscalationNotification(ticket);
+        } else if (status === 'closed') {
+          await sendResolutionNotification(ticket);
+        } else {
+          await sendStatusUpdateNotification(ticket, status);
+        }
+      } catch (err) {
+        console.warn('⚠️ WhatsApp status notification failed:', err?.message);
+      }
       
       // Send satisfaction rating request when ticket is closed
       if (status === 'closed') {
@@ -820,7 +861,7 @@ router.put('/:id', async (req, res) => {
     let productId = ticket.product_id; // Keep existing product_id if no new product
     if (product && product !== ticket.product) {
       const [products] = await pool.execute(
-        'SELECT id FROM products WHERE name = ? AND status = "active"',
+        'SELECT id FROM products WHERE name = ? AND status = \'active\'',
         [product]
       );
       if (products.length > 0) {
@@ -1057,7 +1098,7 @@ router.get('/assignment-stats', async (req, res) => {
     }
 
     // Only agents, managers, and CEO can see assignment stats
-    if (!['support_executive', 'support_manager', 'ceo'].includes(user.role)) {
+    if (!['support_agent', 'support_manager', 'ceo'].includes(user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Only support staff can view assignment statistics.'

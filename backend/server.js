@@ -23,6 +23,9 @@ const tenantsRouter = require('./routes/tenants'); // Tenant management routes
 // Import auto-escalation functionality
 const { startScheduledEscalation } = require('./scheduled-escalation');
 
+// Import IMAP email poller
+const { startImapPoller, stopImapPoller } = require('./services/imapService');
+
 // Import WebSocket server
 const WebSocketServer = require('./websocket-server');
 
@@ -60,11 +63,13 @@ app.use(cors({
     if (process.env.NODE_ENV === 'development') {
       const allowedOrigins = [
         'http://localhost:3000',
-        'http://localhost:3001', 
+        'http://localhost:3001',
         'http://localhost:5000',
+        'http://localhost:8080',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:3001',
         'http://127.0.0.1:5000',
+        'http://127.0.0.1:8080',
         'http://192.168.29.101:3000', // Local network IP
         'http://192.168.29.101:3001',
         'null' // For file:// protocol
@@ -236,6 +241,9 @@ const startServer = async () => {
     // Start the automatic escalation system
     startScheduledEscalation();
 
+    // Start IMAP inbox polling for email-to-ticket creation
+    startImapPoller();
+
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
@@ -245,11 +253,13 @@ const startServer = async () => {
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
+  try { stopImapPoller(); } catch (e) { /* ignore */ }
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
+  try { stopImapPoller(); } catch (e) { /* ignore */ }
   process.exit(0);
 });
 

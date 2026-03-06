@@ -88,7 +88,7 @@ const slaRuleSchema = {
 #### **Staff Account Creation**
 - **Agent Registration**: Create new staff accounts
 - **Auto-generated Credentials**: Automatic login ID and password generation
-- **Role Assignment**: Assign appropriate roles (support_executive, support_manager, ceo)
+- **Role Assignment**: Assign appropriate roles (support_agent, support_manager, ceo)
 - **Account Activation**: Enable/disable agent accounts
 
 #### **Agent Information**
@@ -96,7 +96,7 @@ const slaRuleSchema = {
 const agentSchema = {
   name: 'Full Name',
   email: 'email@company.com',
-  role: 'support_executive', // 'support_executive', 'support_manager', 'ceo'
+  role: 'support_agent', // 'support_agent', 'support_manager', 'ceo'
   is_active: true,
   created_at: '2024-01-15T10:30:00Z',
   last_login: '2024-01-15T14:30:00Z'
@@ -213,7 +213,7 @@ const BusinessDashboard = () => {
   const [newAgent, setNewAgent] = useState({
     name: '',
     email: '',
-    role: 'support_executive'
+    role: 'support_agent'
   });
   
   // SLA management state
@@ -353,7 +353,7 @@ Response: {
       id: 1,
       name: "John Doe",
       email: "john@company.com",
-      role: "support_executive",
+      role: "support_agent",
       is_active: true,
       created_at: "2024-01-15T10:30:00Z"
     }
@@ -365,7 +365,7 @@ POST /api/agents/register
 Body: {
   name: "Jane Smith",
   email: "jane@company.com",
-  role: "support_executive"
+  role: "support_agent"
 }
 Response: {
   success: true,
@@ -711,7 +711,7 @@ const handleAddAgent = async (e) => {
   const agentData = {
     name: newAgent.name.trim(),
     email: newAgent.email.trim(),
-    role: newAgent.role || 'support_executive'
+    role: newAgent.role || 'support_agent'
   };
   
   try {
@@ -725,7 +725,7 @@ const handleAddAgent = async (e) => {
     
     if (data.success) {
       setShowAddAgent(false);
-      setNewAgent({ name: '', email: '', role: 'support_executive' });
+      setNewAgent({ name: '', email: '', role: 'support_agent' });
       fetchAgents();
       
       // Display generated credentials
@@ -833,12 +833,12 @@ Type "DELETE" to confirm:`;
 ### **Role Management**
 
 #### **Available Roles**
-- **support_executive**: Front-line support agents
+- **support_agent**: Front-line support agents
 - **support_manager**: Team managers and supervisors
 - **ceo**: Executive leadership
 
 #### **Role Permissions**
-- **support_executive**: Ticket management, customer communication
+- **support_agent**: Ticket management, customer communication
 - **support_manager**: Team oversight, escalated tickets, analytics
 - **ceo**: Full system access, strategic analytics, business management
 

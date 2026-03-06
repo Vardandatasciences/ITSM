@@ -154,7 +154,7 @@
             try {
                 const user = JSON.parse(userData);
                 
-                if (user.role === 'support_executive' || user.role === 'admin') {
+                if (user.role === 'support_agent' || user.role === 'admin') {
                     resultDiv.innerHTML = `
                         <div class="success">
                             <h4>✅ Ready for Agent Dashboard!</h4>
@@ -164,7 +164,7 @@
                         </div>
                     `;
                 } else {
-                    resultDiv.innerHTML = `<div class="error"><h4>❌ Wrong Role</h4><p>User role is ${user.role}, needs to be support_executive or admin</p></div>`;
+                    resultDiv.innerHTML = `<div class="error"><h4>❌ Wrong Role</h4><p>User role is ${user.role}, needs to be support_agent or admin</p></div>`;
                 }
             } catch (error) {
                 resultDiv.innerHTML = `<div class="error"><h4>❌ Error parsing user data</h4><p>${error.message}</p></div>`;

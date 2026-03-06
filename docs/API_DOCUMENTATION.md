@@ -73,7 +73,7 @@ GET /api/auth/auto-login/:email/:name/:product
 | Role | Description | Access Level |
 |------|-------------|--------------|
 | `user` | Customer | Own tickets only |
-| `support_executive` | Support Agent | Assigned tickets |
+| `support_agent` | Support Agent | Assigned tickets |
 | `support_manager` | Team Manager | Team tickets + management |
 | `ceo` | Executive | Full system access |
 | `admin` | Administrator | System administration |
@@ -177,7 +177,7 @@ Standard login for staff members.
       "id": 1,
       "email": "agent@company.com",
       "name": "John Agent",
-      "role": "support_executive",
+      "role": "support_agent",
       "department": "Support",
       "managerId": 2,
       "lastLogin": "2024-01-15T10:30:00Z"
@@ -266,7 +266,7 @@ Authorization: Bearer <token>
     "id": 1,
     "email": "agent@company.com",
     "name": "John Agent",
-    "role": "support_executive",
+    "role": "support_agent",
     "department": "Support",
     "manager_id": 2,
     "created_at": "2024-01-01T00:00:00Z",
@@ -822,7 +822,7 @@ Get all agents.
       "id": 1,
       "email": "agent@company.com",
       "name": "Jane Agent",
-      "role": "support_executive",
+      "role": "support_agent",
       "department": "Support",
       "manager_id": 2,
       "is_active": true,
@@ -922,7 +922,7 @@ Delete assignment.
 const socket = io('ws://localhost:5000/ws', {
   auth: {
     userId: 1,
-    userRole: 'support_executive'
+    userRole: 'support_agent'
   }
 });
 ```

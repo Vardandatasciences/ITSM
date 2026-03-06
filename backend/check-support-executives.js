@@ -10,7 +10,7 @@ async function checkSupportExecutives() {
     const [users] = await connection.execute(`
       SELECT id, name, email, role, is_active 
       FROM users 
-      WHERE role = 'support_executive'
+      WHERE role = 'support_agent'
     `);
     
     console.log(`\n📝 Users table - Support executives: ${users.length}`);
@@ -22,7 +22,7 @@ async function checkSupportExecutives() {
     const [agents] = await connection.execute(`
       SELECT id, name, email, role, is_active 
       FROM agents 
-      WHERE role = 'support_executive'
+      WHERE role = 'support_agent'
     `);
     
     console.log(`\n📝 Agents table - Support executives: ${agents.length}`);

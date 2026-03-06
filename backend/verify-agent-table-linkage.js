@@ -15,7 +15,7 @@ async function verifyAgentTableLinkage() {
     agents.forEach(agent => {
       console.log(`\n👤 ${agent.name} (ID: ${agent.id})`);
       console.log(`   📧 Email: ${agent.email || 'N/A'}`);
-      console.log(`   🎭 Role: ${agent.role || 'support_executive'}`);
+      console.log(`   🎭 Role: ${agent.role || 'support_agent'}`);
       console.log(`   ✅ Active: ${agent.is_active ? 'Yes' : 'No'}`);
       console.log(`   🔐 Has Password: ${agent.has_password ? 'Yes' : 'No'}`);
     });

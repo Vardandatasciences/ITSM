@@ -7,6 +7,7 @@ const { authenticateToken } = require('../middleware/auth');
 const axios = require('axios');
 const TextFormatter = require('../utils/textFormatter');
 const TicketAssignmentService = require('../utils/ticketAssignment');
+const emailService = require('../services/emailService');
 
 const path = require('path');
 const fs = require('fs');
@@ -257,14 +258,43 @@ router.get('/:id', authenticateToken, verifyTenantAccess, async (req, res) => {
       console.log(`🔍 Ticket found - tenant_id=${tickets[0].tenant_id}`);
     }
     
-    if (tickets.length === 0) {
+    let ticket = tickets[0];
+
+    // Fallback for customers: if tenant-filtered query returned nothing, allow access
+    // when the ticket belongs to the requester (handles tickets created with wrong tenant, e.g. IMAP)
+    if (!ticket && req.user?.role === 'user') {
+      const [fallbackTickets] = await pool.execute(`
+        SELECT t.*, u.name as assigned_to_name, u.email as assigned_to_email
+        FROM tickets t
+        LEFT JOIN agents u ON t.assigned_to = u.id
+        WHERE t.id = ? AND (t.user_id = ? OR t.email = ?)
+      `, [id, req.user.id, req.user.email]);
+
+      if (fallbackTickets.length > 0) {
+        ticket = fallbackTickets[0];
+        console.log(`🔍 Ticket ${id} found via customer ownership fallback (tenant_id=${ticket.tenant_id})`);
+
+        const [fallbackReplies] = await pool.execute(
+          'SELECT * FROM replies WHERE ticket_id = ? ORDER BY created_at ASC',
+          [id]
+        );
+
+        return res.json({
+          success: true,
+          data: {
+            ...ticket,
+            replies: fallbackReplies
+          }
+        });
+      }
+    }
+
+    if (!ticket) {
       return res.status(404).json({
         success: false,
         message: 'Ticket not found'
       });
     }
-    
-    const ticket = tickets[0];
     
     // Get replies for this ticket (tenant-filtered)
     const [replies] = await pool.execute(
@@ -294,8 +324,9 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
     // Debug: Log the request body
     console.log('Received ticket data:', req.body);
     
-    const tenantId = req.tenantId;
-    const { name, email, mobile, product, module, description, issueType, issueTypeOther, issueTitle, userId } = req.body;
+    // CRITICAL: Use tenantId || 1 so assignment UPDATE can find the ticket (WHERE tenant_id = ?)
+    const tenantId = req.tenantId || 1;
+    const { name, email, mobile, product, module, description, issueType, issueTypeOther, issueTitle, userId, utm_description } = req.body;
     
     // Format all input data using universal text formatter
     const formattedData = TextFormatter.formatTicketData({
@@ -317,7 +348,7 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
     
     if (product) {
       const [products] = await pool.execute(
-        'SELECT id FROM products WHERE name = ? AND status = "active" AND tenant_id = ?',
+        'SELECT id FROM products WHERE name = ? AND status = \'active\' AND tenant_id = ?',
         [product, tenantId]
       );
       if (products.length > 0) {
@@ -327,7 +358,7 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
         // Find module_id based on module name
         if (module) {
           const [modules] = await pool.execute(
-            'SELECT id FROM modules WHERE product_id = ? AND name = ? AND status = "active" AND tenant_id = ?',
+            'SELECT id FROM modules WHERE product_id = ? AND name = ? AND status = \'active\' AND tenant_id = ?',
             [productId, module, tenantId]
           );
           if (modules.length > 0) {
@@ -367,13 +398,13 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
       fs.unlinkSync(req.file.path);
     }
     
-    // Insert ticket into database with formatted data (include tenant_id)
+    // Insert ticket into database with formatted data (include tenant_id, utm_description for support URL tracking)
     const safe = v => v === undefined ? null : v;
     const [result] = await pool.execute(
-      `INSERT INTO tickets (tenant_id, user_id, name, email, mobile, product, product_id, module, module_id, description, issue_type, issue_type_other, issue_title, attachment_name, attachment_type, attachment) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tickets (tenant_id, user_id, name, email, mobile, product, product_id, module, module_id, description, issue_type, issue_type_other, issue_title, attachment_name, attachment_type, attachment, utm_description) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        tenantId, // ✅ Add tenant_id
+        tenantId,
         safe(userId),
         safe(name),
         safe(email),
@@ -388,7 +419,8 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
         safe(issueTitle),
         safe(attachmentName),
         safe(attachmentType),
-        safe(attachmentData)
+        safe(attachmentData),
+        safe(utm_description)
       ]
     );
     
@@ -500,6 +532,31 @@ router.post('/', authenticateToken, verifyTenantAccess, upload.single('attachmen
       } : null
     };
 
+    // Send ticket confirmation email (fire-and-forget, don't block response)
+    if (email) {
+      emailService.sendTicketConfirmation(
+        email,
+        name,
+        ticketId,
+        issueTitle || description?.substring(0, 100) || 'Support Request',
+        emailService.getAppUrl()
+      ).catch(err => console.warn('⚠️ Ticket confirmation email failed:', err?.message));
+    }
+
+    // Send WhatsApp notification when ticket is created (if mobile provided)
+    if (mobile) {
+      try {
+        const { sendTicketCreatedNotification } = require('../utils/whatsapp-notifications');
+        await sendTicketCreatedNotification({
+          id: ticketId,
+          mobile,
+          issue_title: issueTitle || description?.substring(0, 100) || 'Support Request'
+        });
+      } catch (err) {
+        console.warn('⚠️ WhatsApp ticket-created notification failed:', err?.message);
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: assignmentResult ? 
@@ -584,8 +641,22 @@ router.put('/:id/status', authenticateToken, verifyTenantAccess, async (req, res
     
     // Send WhatsApp notification for status update
     if (ticket.mobile) {
-      const { sendStatusUpdateNotification } = require('../utils/whatsapp-notifications');
-      await sendStatusUpdateNotification(ticket, status);
+      const {
+        sendStatusUpdateNotification,
+        sendEscalationNotification,
+        sendResolutionNotification
+      } = require('../utils/whatsapp-notifications');
+      try {
+        if (status === 'escalated') {
+          await sendEscalationNotification(ticket);
+        } else if (status === 'closed') {
+          await sendResolutionNotification(ticket);
+        } else {
+          await sendStatusUpdateNotification(ticket, status);
+        }
+      } catch (err) {
+        console.warn('⚠️ WhatsApp status notification failed:', err?.message);
+      }
       
       // Send satisfaction rating request when ticket is closed
       if (status === 'closed') {
@@ -641,7 +712,7 @@ router.put('/:id', async (req, res) => {
     let productId = ticket.product_id; // Keep existing product_id if no new product
     if (product && product !== ticket.product) {
       const [products] = await pool.execute(
-        'SELECT id FROM products WHERE name = ? AND status = "active"',
+        'SELECT id FROM products WHERE name = ? AND status = \'active\'',
         [product]
       );
       if (products.length > 0) {
@@ -680,27 +751,23 @@ router.put('/:id', async (req, res) => {
     
     // Send WhatsApp notification if mobile number exists and status changed
     if (ticket.mobile && status && status !== ticket.status) {
-      const statusEmoji = {
-        'new': '🆕',
-        'in_progress': '⚡',
-        'closed': '✅',
-        'escalated': '🚨'
-      };
-      
-      const statusText = {
-        'new': 'New',
-        'in_progress': 'In Progress',
-        'closed': 'Resolved',
-        'escalated': 'Escalated'
-      };
-      
-      const whatsappMessage = `📋 Ticket Updated\n\n` +
-        `🎫 Ticket ID: #${ticket.id}\n` +
-        `🏷️ Issue: ${issue_title || ticket.issue_title}\n` +
-        `📊 Status: ${statusEmoji[status]} ${statusText[status]}\n\n` +
-        `Your ticket has been updated. We'll keep you informed of any progress!`;
-      
-      await sendWhatsAppMessage(ticket.mobile, whatsappMessage);
+      try {
+        const {
+          sendStatusUpdateNotification,
+          sendEscalationNotification,
+          sendResolutionNotification
+        } = require('../utils/whatsapp-notifications');
+        const updatedTicket = { ...ticket, issue_title: issue_title || ticket.issue_title };
+        if (status === 'escalated') {
+          await sendEscalationNotification(updatedTicket);
+        } else if (status === 'closed') {
+          await sendResolutionNotification(updatedTicket);
+        } else {
+          await sendStatusUpdateNotification(updatedTicket, status);
+        }
+      } catch (err) {
+        console.warn('⚠️ WhatsApp status notification failed:', err?.message);
+      }
     }
     
     res.json({

@@ -15,7 +15,7 @@ async function assignTicketsToProducts() {
     console.log('🔧 Assigning tickets to products...\n');
 
     // Get available products
-    const [products] = await connection.execute('SELECT id, name FROM products WHERE status = "active"');
+    const [products] = await connection.execute('SELECT id, name FROM products WHERE status = \'active\'');
     console.log('📦 Available products:');
     products.forEach(product => {
       console.log(`  ${product.id}: ${product.name}`);

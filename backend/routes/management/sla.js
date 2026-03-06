@@ -45,7 +45,7 @@ router.get('/products', authenticateToken, verifyTenantAccess, async (req, res) 
     if (!tenantId && process.env.NODE_ENV === 'development') {
       try {
         const [tenants] = await pool.execute(
-          'SELECT id FROM tenants WHERE subdomain = "default" AND status = "active" LIMIT 1'
+          'SELECT id FROM tenants WHERE subdomain = \'default\' AND status = \'active\' LIMIT 1'
         );
         if (tenants.length > 0) {
           tenantId = tenants[0].id;

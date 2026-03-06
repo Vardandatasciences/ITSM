@@ -16,8 +16,8 @@ async function checkAndCreateSLAConfigs() {
       console.log('⚠️ No SLA configurations found. Creating sample configurations...');
       
       // Get products and modules to create sample configs
-      const [products] = await pool.execute('SELECT id, name FROM products WHERE status = "active" LIMIT 3');
-      const [modules] = await pool.execute('SELECT id, name FROM modules WHERE status = "active" LIMIT 3');
+      const [products] = await pool.execute('SELECT id, name FROM products WHERE status = \'active\' LIMIT 3');
+      const [modules] = await pool.execute('SELECT id, name FROM modules WHERE status = \'active\' LIMIT 3');
       
       if (products.length === 0 || modules.length === 0) {
         console.log('❌ No products or modules found. Please create some first.');
